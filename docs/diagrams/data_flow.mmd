@@ -1,0 +1,60 @@
+%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#151d2e', 'primaryTextColor': '#e2e8f0', 'primaryBorderColor': '#334155', 'lineColor': '#475569', 'edgeLabelBackground': '#111827'}}}%%
+
+flowchart LR
+    subgraph SENSOR["Sensor Layer"]
+        S1["ENS160+AHT21<br/><i>I2C Bus</i>"]
+    end
+
+    subgraph ARDUINO_LAYER["Arduino"]
+        A1["Serial JSON Output"]
+    end
+
+    subgraph MCP_LAYER["MCP Server"]
+        M1["read_sensor tool"]
+    end
+
+    subgraph JETSON_LAYER["Jetson Agent"]
+        J1["Anomaly Check"]
+        J2["sensor_observation"]
+        J3["analysis_request"]
+    end
+
+    subgraph MACMINI_LAYER["Mac Mini Agent"]
+        MM1["Historical Stats"]
+        MM2["analysis_response"]
+    end
+
+    subgraph DASH_LAYER["Dashboard"]
+        D1["Sensor Charts"]
+        D2["Message Feed"]
+        D3["LFM Stream"]
+    end
+
+    S1 -->|"temp, humidity<br/>eco2, tvoc, aqi"| A1
+    A1 -->|"temp:24.5, humidity:65.2,<br/>eco2:450, tvoc:120, aqi:1"| M1
+    M1 -->|"temperature, humidity,<br/>eco2, tvoc, aqi, timestamp"| J1
+
+    J1 -->|"All readings"| J2
+    J1 -->|"If anomaly"| J3
+
+    J2 -->|"A2A POST"| MM1
+    J3 -->|"A2A POST"| MM1
+
+    MM1 --> MM2
+    MM2 -->|"A2A POST"| J1
+
+    MM1 -->|"WebSocket"| D1
+    MM1 -->|"WebSocket"| D2
+    MM1 -->|"WebSocket"| D3
+
+    style S1 fill:#1a2438,stroke:#00f0ff,stroke-width:2px,color:#e2e8f0
+    style A1 fill:#1a2438,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
+    style M1 fill:#1a2438,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
+    style J1 fill:#151d2e,stroke:#00f0ff,stroke-width:2px,color:#e2e8f0
+    style J2 fill:#151d2e,stroke:#00f0ff,stroke-width:1px,color:#94a3b8
+    style J3 fill:#151d2e,stroke:#ff3366,stroke-width:2px,color:#e2e8f0
+    style MM1 fill:#151d2e,stroke:#ffaa00,stroke-width:2px,color:#e2e8f0
+    style MM2 fill:#151d2e,stroke:#ffaa00,stroke-width:1px,color:#94a3b8
+    style D1 fill:#1a2438,stroke:#a78bfa,stroke-width:1px,color:#e2e8f0
+    style D2 fill:#1a2438,stroke:#a78bfa,stroke-width:1px,color:#e2e8f0
+    style D3 fill:#1a2438,stroke:#a78bfa,stroke-width:1px,color:#e2e8f0

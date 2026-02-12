@@ -1,0 +1,43 @@
+%%{init: {'theme': 'dark', 'themeVariables': {'actorBkg': '#151d2e', 'actorBorder': '#334155', 'actorTextColor': '#e2e8f0', 'signalColor': '#94a3b8', 'signalTextColor': '#e2e8f0', 'labelBoxBkgColor': '#111827', 'labelBoxBorderColor': '#1e293b', 'labelTextColor': '#94a3b8', 'loopTextColor': '#64748b', 'noteBkgColor': '#1a2438', 'noteBorderColor': '#334155', 'noteTextColor': '#94a3b8', 'activationBkgColor': '#1a2438', 'activationBorderColor': '#475569', 'sequenceNumberColor': '#00f0ff'}}}%%
+
+sequenceDiagram
+    autonumber
+
+    participant ARD as Arduino<br/>ENS160+AHT21
+    participant MCP as MCP Server
+    participant JET as Jetson Agent
+    participant LFM_J as LFM (Jetson)
+    participant MAC as Mac Mini Agent
+    participant LFM_M as LFM (Mac Mini)
+    participant DASH as Dashboard
+
+    rect rgb(17, 24, 39)
+        Note over ARD,DASH: Normal Operation (every 5s)
+        ARD->>MCP: {"temp":24.5,"humidity":65.2,"eco2":450,"tvoc":120,"aqi":1}
+        MCP->>JET: read_sensor → sensor data + timestamp
+        JET->>JET: Anomaly check: all thresholds OK
+        JET->>MAC: A2A: sensor_observation
+        MAC->>MAC: Store + update history
+        MAC-->>DASH: WebSocket: sensor data
+    end
+
+    rect rgb(30, 15, 15)
+        Note over ARD,DASH: Anomaly Detected! (eCO2 > 1000ppm)
+        ARD->>MCP: {"temp":24.8,"humidity":66.0,"eco2":1200,"tvoc":380,"aqi":3}
+        MCP->>JET: read_sensor → sensor data + timestamp
+        JET->>JET: ANOMALY: eCO2 1200ppm > 1000 threshold
+
+        JET->>LFM_J: Analyze anomaly with sensor context
+        LFM_J-->>JET: "CO2 spike while temp stable suggests poor ventilation"
+        JET-->>DASH: WebSocket: anomaly + LFM thinking
+
+        JET->>MAC: A2A: analysis_request (anomaly + LFM reasoning)
+        MAC->>MAC: Query historical stats (24h window)
+        MAC->>LFM_M: Analyze with historical context
+        LFM_M-->>MAC: "eCO2 is 2.1σ above mean. Recommend ventilation check"
+        MAC->>JET: A2A: analysis_response (confidence: 0.8)
+        MAC-->>DASH: WebSocket: analysis + LFM thinking
+
+        JET->>JET: Log collaborative decision
+        JET-->>DASH: WebSocket: decision summary
+    end

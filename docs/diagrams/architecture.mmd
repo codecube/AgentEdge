@@ -1,0 +1,34 @@
+%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#151d2e', 'primaryTextColor': '#e2e8f0', 'primaryBorderColor': '#334155', 'lineColor': '#475569', 'secondaryColor': '#1a2438', 'tertiaryColor': '#0a0e17', 'edgeLabelBackground': '#111827', 'clusterBkg': '#111827', 'clusterBorder': '#1e293b'}}}%%
+
+graph TB
+    subgraph SITE_A["<b>SITE A — Jetson Orin Nano</b>"]
+        direction TB
+        ARDUINO["🔌 Arduino Uno<br/><i>ENS160+AHT21</i><br/><code>temp | humidity | eCO2 | TVOC | AQI</code>"]
+        MCP_SERVER["⚙️ MCP Arduino Server<br/><i>read_sensor tool</i><br/><code>stdio transport</code>"]
+        JETSON["🤖 Jetson Agent<br/><i>Anomaly Detection</i><br/><code>FastAPI :8080</code>"]
+        LFM_J["🧠 LFM 2.5 1.2B<br/><i>CUDA inference</i>"]
+    end
+
+    subgraph CONTROL["<b>CONTROL CENTER — Mac Mini M2</b>"]
+        direction TB
+        MACMINI["🤖 Mac Mini Agent<br/><i>Historical Analysis</i><br/><code>FastAPI :8081</code>"]
+        LFM_M["🧠 LFM 2.5 1.2B<br/><i>MPS inference</i>"]
+        DASHBOARD["📊 Streamlit Dashboard<br/><i>Real-time Visualization</i><br/><code>:8501</code>"]
+    end
+
+    ARDUINO -->|"USB Serial<br/>JSON @ 9600 baud"| MCP_SERVER
+    MCP_SERVER -->|"MCP Protocol<br/>stdio"| JETSON
+    JETSON -->|"LFM Analysis"| LFM_J
+    JETSON <-->|"<b>A2A Protocol</b><br/>HTTP POST + WebSocket"| MACMINI
+    MACMINI -->|"LFM Analysis"| LFM_M
+    MACMINI -->|"WebSocket<br/>+ REST API"| DASHBOARD
+
+    style ARDUINO fill:#1a2438,stroke:#00f0ff,stroke-width:2px,color:#e2e8f0
+    style MCP_SERVER fill:#1a2438,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
+    style JETSON fill:#151d2e,stroke:#00f0ff,stroke-width:2px,color:#e2e8f0
+    style MACMINI fill:#151d2e,stroke:#ffaa00,stroke-width:2px,color:#e2e8f0
+    style DASHBOARD fill:#1a2438,stroke:#a78bfa,stroke-width:2px,color:#e2e8f0
+    style LFM_J fill:#111827,stroke:#475569,stroke-width:1px,color:#94a3b8
+    style LFM_M fill:#111827,stroke:#475569,stroke-width:1px,color:#94a3b8
+    style SITE_A fill:#0a0e17,stroke:#00f0ff,stroke-width:1px,color:#00f0ff
+    style CONTROL fill:#0a0e17,stroke:#ffaa00,stroke-width:1px,color:#ffaa00
