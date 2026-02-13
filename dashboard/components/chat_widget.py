@@ -1,8 +1,13 @@
-"""Sidebar chat widget — ask natural-language questions about sensor data."""
+"""Sidebar chat widget — ask natural-language questions about sensor data.
+
+Uses A2A ``message/send`` (JSON-RPC) for chat with the Mac Mini agent.
+Falls back to the REST ``/api/chat`` endpoint for a fast data-only answer.
+"""
 from __future__ import annotations
 
-import httpx
 import streamlit as st
+
+from dashboard.a2a_client import extract_agent_reply, send_a2a_message
 
 
 def render_chat_widget(macmini_url: str):
@@ -29,7 +34,7 @@ def render_chat_widget(macmini_url: str):
         # Add user message
         st.session_state.chat_history.append({"role": "user", "content": question})
 
-        # Call Mac Mini /api/chat
+        # Send via A2A message/send
         answer = _send_question(macmini_url, question)
         st.session_state.chat_history.append({"role": "agent", "content": answer})
 
@@ -41,22 +46,9 @@ def render_chat_widget(macmini_url: str):
 
 
 def _send_question(macmini_url: str, question: str) -> str:
-    """POST the question to Mac Mini and return the answer."""
-    try:
-        resp = httpx.post(
-            f"{macmini_url}/api/chat",
-            json={"question": question},
-            timeout=10.0,
-        )
-        if resp.status_code == 200:
-            return resp.json().get("answer", "No answer received.")
-        return f"Agent returned status {resp.status_code}."
-    except httpx.ConnectError:
-        return "Mac agent is not reachable."
-    except httpx.TimeoutException:
-        return "Request timed out — the agent may be busy."
-    except Exception as e:
-        return f"Error: {e}"
+    """Send question via A2A message/send and return the agent's reply."""
+    response = send_a2a_message(macmini_url, question, timeout=30.0)
+    return extract_agent_reply(response)
 
 
 def _render_user_message(content: str):

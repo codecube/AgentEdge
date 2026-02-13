@@ -1,6 +1,7 @@
 """Agent Edge Dashboard — Edge Operations Center.
 
 Real-time visualization of multi-agent edge AI system.
+Chat uses A2A ``message/send``; data polling uses REST.
 Run: streamlit run dashboard/app.py
 """
 from __future__ import annotations
@@ -172,7 +173,7 @@ footer_html = """
 <div style="margin-top: 32px; padding-top: 12px; border-top: 1px solid #1e293b;
             display: flex; justify-content: space-between; align-items: center;">
     <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #334155;">
-        MCP + A2A PROTOCOLS // LFM2.5-1.2B-Thinking // ENS160+AHT21
+        GOOGLE ADK + A2A + MCP // LFM2.5-1.2B-Thinking // ENS160+AHT21
     </span>
     <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #334155;">
         AI FUTURES LAB

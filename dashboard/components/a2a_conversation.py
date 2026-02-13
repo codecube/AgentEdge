@@ -1,4 +1,8 @@
-"""A2A conversation display — scrolling message feed between agents."""
+"""A2A conversation display — scrolling message feed between agents.
+
+Renders both legacy custom messages (from ``/api/messages``) and
+A2A SDK-format messages (with ``role`` / ``parts``).
+"""
 from __future__ import annotations
 
 import streamlit as st
@@ -25,10 +29,36 @@ def render_a2a_conversation(messages: list[dict]):
     st.markdown(html, unsafe_allow_html=True)
 
 
+def _extract_parts_text(parts: list[dict]) -> str:
+    """Extract text from A2A message parts list."""
+    texts = []
+    for part in parts:
+        text = part.get("text", "")
+        if text:
+            texts.append(text)
+    return " ".join(texts)[:100]
+
+
 def _format_message(msg: dict) -> str:
-    """Format a single A2A message as styled HTML."""
-    event = msg.get("event", msg.get("type", "unknown"))
+    """Format a single message as styled HTML.
+
+    Supports both the custom format (event/data/type/from/payload) and
+    A2A SDK format (role/parts/messageId).
+    """
+    # --- A2A SDK format (role + parts) ---
     data = msg.get("data", msg)
+    if "role" in data and "parts" in data:
+        role = data["role"]
+        text = _extract_parts_text(data.get("parts", []))
+        color = "#a78bfa" if role == "user" else "#00f0ff"
+        label = "USER" if role == "user" else "AGENT"
+        return (
+            f'<div><span class="msg-system">[{label}]</span> '
+            f'<span style="color:{color};">{text}</span></div>'
+        )
+
+    # --- Legacy custom format ---
+    event = msg.get("event", msg.get("type", "unknown"))
     timestamp = data.get("timestamp", "")
 
     # Shorten timestamp to HH:MM:SS

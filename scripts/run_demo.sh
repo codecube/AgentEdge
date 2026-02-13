@@ -15,12 +15,12 @@ source .venv/bin/activate
 mkdir -p data
 
 echo "[1/3] Starting Mac Mini Agent (port 8081)..."
-python -m agents.macmini.agent &
+python3 -m agents.macmini.server &
 MACMINI_PID=$!
 sleep 2
 
 echo "[2/3] Starting Jetson Agent (port 8080)..."
-python -m agents.jetson.agent &
+python3 -m agents.jetson.server &
 JETSON_PID=$!
 sleep 2
 

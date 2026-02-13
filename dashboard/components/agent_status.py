@@ -1,4 +1,9 @@
-"""Agent status panel — live connection indicators."""
+"""Agent status panel — live connection indicators.
+
+Displays agent status from the Mac Mini's ``/api/agents`` REST endpoint.
+A2A agent cards are available at ``/.well-known/agent-card.json`` but the
+Mac Mini proxies Jetson status so the dashboard doesn't need direct access.
+"""
 from __future__ import annotations
 
 import streamlit as st
@@ -30,9 +35,18 @@ def _render_agent_card(name: str, role: str, status: dict | None, accent: str):
     state_text = "ONLINE" if is_online else "OFFLINE"
     state_color = "#22c55e" if is_online else "#ff3366"
 
-    agent_id = status.get("agent_id", "—") if status else "—"
+    # Support both old format (agent_id) and A2A card format (name)
+    agent_id = (
+        status.get("agent_id") or status.get("name", "—") if status else "—"
+    )
     model = status.get("model", "—") if status else "—"
-    caps = ", ".join(status.get("capabilities", [])) if status else "—"
+    caps_list = status.get("capabilities") or status.get("skills") or []
+    if isinstance(caps_list, list) and caps_list and isinstance(caps_list[0], dict):
+        caps = ", ".join(s.get("name", "") for s in caps_list)
+    elif isinstance(caps_list, list):
+        caps = ", ".join(str(c) for c in caps_list)
+    else:
+        caps = "—"
 
     html = f"""
     <div style="
