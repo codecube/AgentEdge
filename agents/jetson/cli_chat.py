@@ -1,11 +1,14 @@
-"""Interactive CLI chat for the Jetson agent — talk to LFM and read live sensors."""
+"""Interactive CLI chat for the Jetson agent — talk to LFM and read live sensors.
+
+Requires the Jetson agent server to be running (python3 -m agents.jetson.server).
+Connects via the agent's HTTP API for both sensor reads and chat.
+"""
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
 import os
-import sys
 
 import httpx
 
@@ -64,40 +67,6 @@ def _format_sensor(data: dict) -> str:
     return "\n".join(lines)
 
 
-def _build_prompt(question: str, sensor_data: dict | None) -> str:
-    """Build an LFM prompt with optional sensor context."""
-    if sensor_data:
-        sensor_block = (
-            f"- Temperature: {sensor_data.get('temp')}°C\n"
-            f"- Humidity: {sensor_data.get('humidity')}%\n"
-            f"- eCO2: {sensor_data.get('eco2')} ppm\n"
-            f"- TVOC: {sensor_data.get('tvoc')} ppb\n"
-            f"- AQI: {sensor_data.get('aqi')}/5"
-        )
-    else:
-        sensor_block = "- No live sensor data available"
-
-    return (
-        "You are an AI assistant for the Agent Edge environmental monitoring system "
-        f"at {config.LOCATION}.\n"
-        "You have access to live sensor data from an ENS160+AHT21 module.\n\n"
-        f"Current sensor data:\n{sensor_block}\n\n"
-        f"User question: {question}\n\n"
-        "Provide a concise, helpful answer."
-    )
-
-
-async def _read_sensor_mcp(mcp) -> dict | None:
-    """Safely read sensor data via MCP."""
-    if mcp is None:
-        return None
-    try:
-        return await mcp.read_sensor()
-    except Exception as e:
-        logger.warning("Sensor read failed: %s", e)
-        return None
-
-
 async def _read_sensor_http(client: httpx.AsyncClient) -> dict | None:
     """Read sensor data via the agent HTTP API."""
     try:
@@ -135,10 +104,12 @@ async def _stream_chat_http(client: httpx.AsyncClient, question: str) -> None:
 
 
 async def _check_agent() -> bool:
-    """Check if the Jetson agent is running."""
+    """Check if the Jetson agent server is reachable."""
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
-            resp = await client.get(f"{AGENT_BASE_URL}/health")
+            resp = await client.get(
+                f"{AGENT_BASE_URL}/.well-known/agent-card.json"
+            )
             return resp.status_code == 200
     except Exception:
         return False
@@ -147,46 +118,19 @@ async def _check_agent() -> bool:
 async def main() -> None:
     print(BANNER)
 
-    # ── Check if agent is running ─────────────────────────────────────────
-    agent_url: str | None = None
-    http_client: httpx.AsyncClient | None = None
-    lfm = None
-    mcp = None
-    mcp_cm = None
-
+    # ── Check if agent server is running ──────────────────────────────────
     agent_available = await _check_agent()
 
-    if agent_available:
-        agent_url = AGENT_BASE_URL
-        http_client = httpx.AsyncClient(timeout=10.0)
-        print(f"  LFM (via agent) {_check(True)}  {DIM}{agent_url}{RESET}")
-        print(f"  Sensor (agent)  {_check(True)}  {DIM}{agent_url}/api/sensor/current{RESET}")
-    else:
-        # ── Fallback: load LFM locally ────────────────────────────────────
-        try:
-            from shared.lfm_client import LFMClient
+    if not agent_available:
+        print(f"  Agent server    {_check(False)}  {DIM}{AGENT_BASE_URL}{RESET}")
+        print()
+        print(f"  {RED}The Jetson agent server must be running.{RESET}")
+        print(f"  {DIM}Start it with: python3 -m agents.jetson.server{RESET}")
+        return
 
-            print(f"  {DIM}Loading LFM model ({config.LFM_MODEL})…{RESET}", end="", flush=True)
-            lfm = LFMClient(config.LFM_MODEL)
-            print(f"\r  LFM model       {_check(True)}  {DIM}{config.LFM_MODEL}{RESET}")
-        except Exception as e:
-            print(f"\r  LFM model       {_check(False)}  {DIM}{e}{RESET}")
-
-        # ── Fallback: init MCP directly ───────────────────────────────────
-        try:
-            from agents.jetson.mcp_client import MCPArduinoClient
-
-            mcp_cm = MCPArduinoClient(config.SERIAL_PORT, config.SERIAL_BAUD)
-            mcp = await mcp_cm.__aenter__()
-            test = await mcp.read_sensor()
-            if test is not None:
-                print(f"  Sensor (MCP)    {_check(True)}  {DIM}{config.SERIAL_PORT}{RESET}")
-            else:
-                print(f"  Sensor (MCP)    {_check(False)}  {DIM}connected but no data{RESET}")
-        except Exception as e:
-            print(f"  Sensor (MCP)    {_check(False)}  {DIM}{e}{RESET}")
-            mcp = None
-            mcp_cm = None
+    http_client = httpx.AsyncClient(timeout=10.0)
+    print(f"  Agent server    {_check(True)}  {DIM}{AGENT_BASE_URL}{RESET}")
+    print(f"  Sensor (agent)  {_check(True)}  {DIM}{AGENT_BASE_URL}/api/sensor/current{RESET}")
 
     print()
     print(f"  {DIM}Type /help for commands or ask a question.{RESET}")
@@ -217,11 +161,7 @@ async def main() -> None:
                 break
 
             if cmd in ("/sensor", "/read"):
-                data = None
-                if http_client:
-                    data = await _read_sensor_http(http_client)
-                else:
-                    data = await _read_sensor_mcp(mcp)
+                data = await _read_sensor_http(http_client)
                 if data:
                     last_sensor = data
                     print(f"\n{CYAN}Sensor Reading:{RESET}")
@@ -232,12 +172,7 @@ async def main() -> None:
                 continue
 
             if cmd == "/status":
-                if agent_url:
-                    print(f"\n  LFM (via agent) {_check(True)}")
-                    print(f"  Sensor (agent)  {_check(True)}")
-                else:
-                    print(f"\n  LFM model       {_check(lfm is not None)}")
-                    print(f"  Sensor (MCP)    {_check(mcp is not None)}")
+                print(f"\n  Agent server    {_check(True)}")
                 print(f"  Location        {DIM}{config.LOCATION}{RESET}")
                 if last_sensor:
                     print(f"  Last reading    {DIM}{json.dumps(last_sensor)}{RESET}")
@@ -257,38 +192,11 @@ async def main() -> None:
                 print(f"{RED}Unknown command:{RESET} {text}. Type /help for commands.")
                 continue
 
-            # ── Chat with LFM ────────────────────────────────────────
-            if http_client:
-                await _stream_chat_http(http_client, text)
-                continue
-
-            if lfm is None:
-                print(f"\n{RED}LFM not available.{RESET} Only /sensor commands work.\n")
-                continue
-
-            # Local LFM fallback
-            sensor_ctx = await _read_sensor_mcp(mcp)
-            if sensor_ctx:
-                last_sensor = sensor_ctx
-
-            prompt = _build_prompt(text, sensor_ctx or last_sensor)
-
-            print(f"\n{CYAN}", end="", flush=True)
-            try:
-                async for token in lfm.analyze_streaming(prompt):
-                    print(token, end="", flush=True)
-            except Exception as e:
-                print(f"{RESET}\n{RED}LFM error: {e}{RESET}")
-            print(f"{RESET}\n")
+            # ── Chat via agent HTTP API ────────────────────────────────
+            await _stream_chat_http(http_client, text)
 
     finally:
-        if http_client:
-            await http_client.aclose()
-        if mcp_cm is not None:
-            try:
-                await mcp_cm.__aexit__(None, None, None)
-            except Exception:
-                pass
+        await http_client.aclose()
 
 
 if __name__ == "__main__":

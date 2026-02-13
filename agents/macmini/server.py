@@ -1,7 +1,7 @@
-"""Mac Mini hybrid server — A2A + dashboard REST + WebSocket.
+"""Mac hybrid server — A2A + dashboard REST + WebSocket.
 
 Combines the ADK A2A agent endpoint with custom dashboard routes in a
-single FastAPI application.  The Mac Mini loads historical data on startup
+single FastAPI application.  The Mac loads historical data on startup
 and tracks Jetson liveness via the sensor push endpoint.
 """
 from __future__ import annotations
@@ -30,7 +30,7 @@ logging.basicConfig(
 async def lifespan(app: FastAPI):
     """Load historical data on startup."""
     logger.info(
-        "Starting Mac Mini Agent: %s on port %d",
+        "Starting Mac Agent: %s on port %d",
         config.AGENT_ID,
         config.AGENT_PORT,
     )
@@ -45,12 +45,12 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    logger.info("Shutting down Mac Mini Agent")
+    logger.info("Shutting down Mac Agent")
 
 
 # --- Build app ---
 
-app = FastAPI(title="Mac Mini Agent - Control Center", lifespan=lifespan)
+app = FastAPI(title="Mac Agent - Control Center", lifespan=lifespan)
 
 # Custom dashboard routes under /api
 app.include_router(dashboard_router, prefix="/api")

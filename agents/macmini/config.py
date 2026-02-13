@@ -1,4 +1,4 @@
-"""Mac Mini agent configuration."""
+"""Mac agent configuration."""
 
 import os
 

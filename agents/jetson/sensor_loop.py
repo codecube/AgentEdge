@@ -1,7 +1,7 @@
 """Jetson sensor loop — background asyncio task.
 
 Owns the MCP connection (serial port is exclusive).  Reads sensor data,
-stores locally, pushes to Mac Mini via REST, and broadcasts via WebSocket.
+stores locally, pushes to Mac via REST, and broadcasts via WebSocket.
 """
 from __future__ import annotations
 
@@ -82,7 +82,7 @@ async def sensor_loop() -> None:
             # Update shared state
             state.previous_reading = reading
 
-            # Push to Mac Mini via REST
+            # Push to Mac via REST
             await _push_to_macmini(reading)
 
             await state.broadcast_ws(
@@ -96,7 +96,7 @@ async def sensor_loop() -> None:
 
 
 async def _push_to_macmini(reading: dict) -> None:
-    """Push a sensor reading to the Mac Mini's REST endpoint."""
+    """Push a sensor reading to the Mac's REST endpoint."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             await client.post(
@@ -104,4 +104,4 @@ async def _push_to_macmini(reading: dict) -> None:
                 json=reading,
             )
     except Exception as e:
-        logger.warning("Failed to push reading to Mac Mini: %s", e)
+        logger.warning("Failed to push reading to Mac: %s", e)

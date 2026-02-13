@@ -1,6 +1,6 @@
 """Sidebar chat widget — ask natural-language questions about sensor data.
 
-Uses A2A ``message/send`` (JSON-RPC) for chat with the Mac Mini agent.
+Uses A2A ``message/send`` (JSON-RPC) for chat with the Mac agent.
 Falls back to the REST ``/api/chat`` endpoint for a fast data-only answer.
 """
 from __future__ import annotations

@@ -1,8 +1,8 @@
 """Agent status panel — live connection indicators.
 
-Displays agent status from the Mac Mini's ``/api/agents`` REST endpoint.
+Displays agent status from the Mac's ``/api/agents`` REST endpoint.
 A2A agent cards are available at ``/.well-known/agent-card.json`` but the
-Mac Mini proxies Jetson status so the dashboard doesn't need direct access.
+Mac proxies Jetson status so the dashboard doesn't need direct access.
 """
 from __future__ import annotations
 

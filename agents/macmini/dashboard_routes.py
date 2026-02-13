@@ -1,4 +1,4 @@
-"""Mac Mini dashboard REST routes — served alongside the A2A endpoint."""
+"""Mac dashboard REST routes — served alongside the A2A endpoint."""
 from __future__ import annotations
 
 import re

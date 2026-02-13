@@ -11,7 +11,7 @@ from typing import Any
 # --- Jetson state ---
 previous_reading: dict | None = None
 
-# --- Mac Mini state ---
+# --- Mac state ---
 sensor_history: list[dict] = []
 a2a_messages: list[dict] = []
 reasoning_events: list[dict] = []

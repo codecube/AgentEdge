@@ -1,4 +1,4 @@
-"""Mac Mini ADK agent definition.
+"""Mac ADK agent definition.
 
 Defines the control LlmAgent with LiteLlm (Ollama), analysis tools,
 and a RemoteA2aAgent sub-agent pointing at the Jetson.
@@ -27,7 +27,7 @@ jetson_remote = RemoteA2aAgent(
 )
 
 INSTRUCTION = (
-    "You are the Mac Mini control agent for the Agent Edge system. "
+    "You are the Mac control agent for the Agent Edge system. "
     "You coordinate with the Jetson sensor agent and provide historical analysis.\n\n"
     "Your capabilities:\n"
     "- Compute statistics across sensor fields\n"
@@ -42,7 +42,7 @@ INSTRUCTION = (
 root_agent = LlmAgent(
     name="macmini_control",
     model=LiteLlm(model="ollama_chat/lfm2.5-thinking"),
-    description="Control agent on Mac Mini M2. "
+    description="Control agent on Mac. "
     "Performs historical analysis and coordinates with remote sensor agents.",
     instruction=INSTRUCTION,
     tools=[compute_statistics, get_recent_history, get_anomaly_summary],

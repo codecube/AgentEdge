@@ -54,9 +54,9 @@ if "chat_history" not in st.session_state:
 
 
 def fetch_all_data() -> dict:
-    """Fetch all dashboard data from Mac Mini in one pass.
+    """Fetch all dashboard data from Mac in one pass.
 
-    The dashboard talks ONLY to the Mac Mini agent.  The Mac Mini tracks
+    The dashboard talks ONLY to the Mac agent.  The Mac tracks
     Jetson availability via heartbeats so the dashboard never needs to
     reach the Jetson directly (which it can't across the network).
     """
@@ -70,7 +70,7 @@ def fetch_all_data() -> dict:
 
     try:
         with httpx.Client(base_url=MACMINI_URL, timeout=3.0) as client:
-            # Agent statuses (Mac Mini proxies Jetson status)
+            # Agent statuses (Mac proxies Jetson status)
             try:
                 resp = client.get("/api/agents")
                 if resp.status_code == 200:
@@ -104,7 +104,7 @@ def fetch_all_data() -> dict:
             except Exception:
                 pass
     except Exception:
-        # Mac Mini completely unreachable — everything stays at defaults
+        # Mac completely unreachable — everything stays at defaults
         pass
 
     return result
@@ -131,7 +131,7 @@ header_html = f"""
 """
 st.markdown(header_html, unsafe_allow_html=True)
 
-# --- Fetch Data (single pass to Mac Mini only) ---
+# --- Fetch Data (single pass to Mac only) ---
 data = fetch_all_data()
 
 if data["sensor_readings"]:

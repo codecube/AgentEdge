@@ -1,4 +1,4 @@
-"""Mac Mini agent tool functions for ADK.
+"""Mac agent tool functions for ADK.
 
 Pure functions that the LLM agent can call as tools.  They read from
 shared state (populated by sensor observations) and from JSONL storage.

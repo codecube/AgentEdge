@@ -2,11 +2,12 @@
 
 **Multi-site edge intelligence system where two autonomous AI agents collaborate in real time — no cloud required.**
 
-Agent Edge is a working demonstration built for [Capgemini's AI Futures Lab](https://www.capgemini.com/about-us/who-we-are/innovation-ecosystem/aifutures/) showcasing how edge AI agents can perceive, reason, and collaborate using open protocols. A Jetson Orin Nano reads environmental sensors, detects anomalies, and coordinates with a Mac Mini to reach decisions — all running local LLM inference with [Liquid AI's LFM 2.5](https://www.liquid.ai/models).
+Agent Edge is a working demonstration built for [Capgemini's AI Futures Lab](https://www.capgemini.com/about-us/who-we-are/innovation-ecosystem/aifutures/) showcasing how edge AI agents can perceive, reason, and collaborate using open protocols. A Jetson Orin Nano reads environmental sensors, detects anomalies, and coordinates with a Mac to reach decisions — all running local LLM inference with [Liquid AI's LFM 2.5](https://www.liquid.ai/models).
 
 ## What This Demonstrates
 
 - **Agents as the new APIs** — autonomous agents replacing rigid service-to-service integrations
+- **Google ADK** — Agent Development Kit for building and serving AI agents
 - **A2A Protocol** — Google's Agent-to-Agent protocol for cross-device agent collaboration
 - **MCP Protocol** — Anthropic's Model Context Protocol for agent-to-system integration
 - **On-device intelligence** — Liquid AI LFM2.5-1.2B-Thinking running locally on edge hardware
@@ -36,27 +37,33 @@ When any threshold is exceeded, both agents run LFM analysis and collaborate to 
 agent-edge/
 ├── arduino/sensor_reader/       # Arduino .ino for ENS160+AHT21
 ├── mcp_servers/arduino/         # MCP server exposing read_sensor tool
-├── shared/                      # A2A protocol, agent card, LFM client, storage
-│   ├── a2a_protocol.py          # Pydantic message models (6 message types)
-│   ├── agent_card.py            # Agent discovery schema
-│   ├── lfm_client.py            # LFM 2.5 wrapper with streaming
+├── shared/
+│   ├── state.py                 # Module-level shared state (per-process)
 │   └── storage.py               # JSON Lines append-only storage
 ├── agents/
 │   ├── jetson/                  # Site A: sensor reading + anomaly detection
-│   │   ├── agent.py             # FastAPI server on :8080
-│   │   ├── cli_chat.py          # Interactive CLI chat (LFM + live sensor)
+│   │   ├── agent_def.py         # ADK LlmAgent definition + tools
+│   │   ├── server.py            # Hybrid server: to_a2a() + FastAPI on :8080
+│   │   ├── sensor_loop.py       # Background task: MCP read → push to Mac
+│   │   ├── tools.py             # detect_anomalies, get_latest_reading, get_sensor_history
+│   │   ├── dashboard_routes.py  # REST APIRouter for /api/sensor/current
+│   │   ├── cli_chat.py          # Interactive CLI chat (requires agent running)
 │   │   ├── config.py            # Thresholds and environment config
 │   │   └── mcp_client.py        # MCP client for Arduino server
 │   └── macmini/                 # Control: historical analysis + dashboard
-│       ├── agent.py             # FastAPI server on :8081
+│       ├── agent_def.py         # ADK LlmAgent + RemoteA2aAgent(jetson)
+│       ├── server.py            # Hybrid server: to_a2a() + FastAPI on :8081
+│       ├── tools.py             # compute_statistics, get_history, anomaly_summary
+│       ├── dashboard_routes.py  # REST APIRouter for /api/history, /api/chat, etc.
 │       └── config.py            # Environment config
 ├── dashboard/                   # Streamlit real-time dashboard
 │   ├── app.py                   # Main app with auto-refresh
+│   ├── a2a_client.py            # Sync A2A JSON-RPC client for Streamlit
 │   ├── style.py                 # "Edge Operations Center" theme
-│   └── components/              # sensor_viz, a2a_conversation, lfm_reasoning, agent_status
+│   └── components/              # sensor_viz, a2a_conversation, chat_widget, agent_status
 ├── docs/                        # Word document + Mermaid diagrams
-├── scripts/                     # Setup and launcher scripts
-└── tests/                       # Unit tests (23 passing)
+├── scripts/                     # Setup and demo launcher scripts
+└── tests/                       # pytest suite (45 tests)
 ```
 
 ## Prerequisites
@@ -70,7 +77,7 @@ agent-edge/
 - **Arduino** with ENS160+AHT21 module connected via USB
   - Arduino libraries: `ScioSense_ENS160`, `Adafruit_AHTX0`
 - **Jetson Orin Nano** (Site A) or any Linux machine
-- **Mac Mini M2** (Control Center) or any machine
+- **Mac** (Control Center) or any machine
 
 For local development on a single machine, both agents can run side by side.
 
@@ -101,7 +108,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # Install dependencies
-pip install -r agents/jetson/requirements.txt
+pip install -r requirements.txt
 
 # Create data directory
 mkdir -p data
@@ -110,38 +117,36 @@ mkdir -p data
 ollama pull lfm2.5-thinking
 
 # Configure environment
-export MACMINI_AGENT_URL=http://<macmini-ip>:8081
-export SERIAL_PORT=/dev/ttyUSB0   # Arduino serial port
-# export SERIAL_BAUD=9600         # Default, change if needed
-# export OLLAMA_URL=http://localhost:11434  # Default
+export OLLAMA_API_BASE=http://localhost:11434   # Required for LiteLLM
+export MACMINI_AGENT_URL=http://<mac-ip>:8081
+export SERIAL_PORT=/dev/ttyUSB0                 # Arduino serial port
 
 # Run the agent
-python -m agents.jetson.agent
+python3 -m agents.jetson.server
 ```
 
 The Jetson agent will:
-- Connect to the Arduino via MCP server
-- Read sensor data every 5 seconds
-- Send observations to the Mac Mini via A2A
-- Detect anomalies and trigger collaborative analysis
-- Serve WebSocket stream on `ws://0.0.0.0:8080/stream`
+- Start a hybrid server (A2A + REST + WebSocket) on port 8080
+- Connect to the Arduino via MCP and read sensors every 10 seconds
+- Push sensor data to the Mac agent via REST
+- Detect anomalies and broadcast via WebSocket on `ws://0.0.0.0:8080/stream`
+- Serve its A2A agent card at `http://localhost:8080/.well-known/agent-card.json`
 
 #### Interactive CLI Chat
 
-For demos and debugging, you can also run the standalone CLI chat directly on the Jetson terminal:
+For demos and debugging, you can run the CLI chat while the Jetson agent server is running:
 
 ```bash
+# In a separate terminal (requires the agent server to be running)
 python3 -m agents.jetson.cli_chat
 ```
 
 This gives you an interactive REPL where you can:
-- Type `/sensor` to read live sensor data from the Arduino
+- Type `/sensor` to read live sensor data from the Arduino (via the agent API)
 - Ask free-text questions — LFM responds with streaming output, using live sensor data as context
 - Type `/help` to see all commands, `/quit` to exit
 
-The CLI works with graceful degradation: if no Arduino is connected, chat still works with LFM; if LFM isn't available, sensor reads still work.
-
-### 3. Mac Mini Agent (Control Center)
+### 3. Mac Agent (Control Center)
 
 ```bash
 # Clone and enter project (if on a different machine)
@@ -151,8 +156,7 @@ cd AgentEdge
 # Create virtual environment and install dependencies
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r agents/macmini/requirements.txt
-pip install -r dashboard/requirements.txt
+pip install -r requirements.txt
 
 # Create data directory
 mkdir -p data
@@ -161,22 +165,24 @@ mkdir -p data
 ollama pull lfm2.5-thinking
 
 # Configure environment
+export OLLAMA_API_BASE=http://localhost:11434   # Required for LiteLLM
 export JETSON_AGENT_URL=http://<jetson-ip>:8080
-# export OLLAMA_URL=http://localhost:11434  # Default
 
 # Run the agent
-python -m agents.macmini.agent
+python3 -m agents.macmini.server
 ```
 
-The Mac Mini agent will:
+The Mac agent will:
+- Start a hybrid server (A2A + REST + WebSocket) on port 8081
 - Receive and store sensor observations from the Jetson
 - Maintain 24-hour rolling statistics for all sensor fields
-- Respond to analysis requests with historical context + LFM reasoning
-- Serve dashboard data APIs on `:8081`
+- Delegate to the Jetson agent via A2A (`RemoteA2aAgent`) for live readings
+- Serve dashboard data APIs at `/api/*`
+- Serve its A2A agent card at `http://localhost:8081/.well-known/agent-card.json`
 
 ### 4. Dashboard
 
-On the Mac Mini (or wherever the Mac Mini agent runs):
+On the Mac (or wherever the Mac agent runs):
 
 ```bash
 streamlit run dashboard/app.py
@@ -189,6 +195,7 @@ Open `http://localhost:8501` in a browser. The dashboard auto-refreshes every se
 For development or demo on one machine:
 
 ```bash
+export OLLAMA_API_BASE=http://localhost:11434
 bash scripts/run_demo.sh
 ```
 
@@ -200,23 +207,22 @@ This starts both agents and the dashboard. Press `Ctrl+C` to stop all components
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MACMINI_AGENT_URL` | `http://localhost:8081` | Mac Mini agent URL |
+| `OLLAMA_API_BASE` | — | **Required.** Ollama server URL for LiteLLM |
+| `MACMINI_AGENT_URL` | `http://localhost:8081` | Mac agent URL |
 | `SERIAL_PORT` | `/dev/ttyUSB0` | Arduino serial port |
 | `SERIAL_BAUD` | `9600` | Arduino baud rate |
-| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
-| `LFM_MODEL` | `lfm2.5-thinking` | Ollama model name |
+| `SENSOR_POLL_INTERVAL` | `10` | Seconds between sensor reads |
 | `JETSON_HOST` | `0.0.0.0` | Bind address |
 | `JETSON_PORT` | `8080` | Agent port |
 | `JETSON_LOG_FILE` | `data/jetson_agent.jsonl` | Log file path |
 | `JETSON_LOCATION` | `Site A - Server Room` | Location label |
 
-### Mac Mini Agent
+### Mac Agent
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `OLLAMA_API_BASE` | — | **Required.** Ollama server URL for LiteLLM |
 | `JETSON_AGENT_URL` | `http://localhost:8080` | Jetson agent URL |
-| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
-| `LFM_MODEL` | `lfm2.5-thinking` | Ollama model name |
 | `MACMINI_HOST` | `0.0.0.0` | Bind address |
 | `MACMINI_PORT` | `8081` | Agent port |
 | `MACMINI_LOG_FILE` | `data/macmini_agent.jsonl` | Log file path |
@@ -227,7 +233,7 @@ This starts both agents and the dashboard. Press `Ctrl+C` to stop all components
 python3 -m pytest tests/ -v
 ```
 
-39 tests covering A2A protocol serialization, agent cards, chat, storage, and anomaly thresholds.
+45 tests covering ADK tool functions, A2A client, chat integration, storage, and anomaly thresholds.
 
 ## Documentation
 
@@ -243,10 +249,12 @@ Full technical documentation is in `docs/Agent_Edge_AI_Futures_Lab.docx`, includ
 | Component | Technology |
 |-----------|------------|
 | Language | Python 3.10+ |
-| Web Framework | FastAPI + Uvicorn |
-| Agent Communication | A2A Protocol (HTTP POST + WebSocket) |
-| Tool Integration | MCP (Model Context Protocol) |
+| Agent Framework | [Google ADK](https://github.com/google/adk-python) (`google-adk[a2a]`) |
+| Agent Communication | [A2A Protocol](https://github.com/google/A2A) via `a2a-sdk` |
+| LLM Integration | [LiteLLM](https://github.com/BerriAI/litellm) → Ollama |
 | LLM | [Liquid AI LFM2.5-1.2B-Thinking](https://www.liquid.ai/models) via Ollama |
+| Tool Integration | MCP (Model Context Protocol) |
+| Web Framework | FastAPI + Uvicorn |
 | Dashboard | Streamlit + Plotly |
 | Storage | JSON Lines (no database) |
 | Sensor | ENS160 + AHT21 (I2C) |

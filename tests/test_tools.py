@@ -1,4 +1,4 @@
-"""Tests for extracted tool functions (Jetson + Mac Mini)."""
+"""Tests for extracted tool functions (Jetson + Mac)."""
 from __future__ import annotations
 
 import pytest
