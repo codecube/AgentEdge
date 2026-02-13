@@ -425,17 +425,27 @@ def _build_chat_prompt(question: str, current: dict | None, stats: dict) -> str:
     )
 
 
-async def _generate_chat_answer(
-    question: str, current: dict | None, stats: dict
-) -> str:
-    """Use LFM if available, otherwise fall back to keyword-based data answer."""
-    if lfm_client:
-        try:
-            prompt = _build_chat_prompt(question, current, stats)
-            return await lfm_client.analyze(prompt)
-        except Exception as e:
-            logger.warning("LFM chat failed, falling back to data answer: %s", e)
-    return _data_only_answer(question, current, stats)
+async def _background_lfm_chat(question: str, current: dict | None, stats: dict):
+    """Run LFM analysis in background, push result to reasoning panel."""
+    try:
+        prompt = _build_chat_prompt(question, current, stats)
+        lfm_answer = await lfm_client.analyze(prompt)
+        _record_reasoning_event({
+            "type": "chat_lfm",
+            "question": question,
+            "lfm_thinking": lfm_answer,
+            "reading": current,
+        })
+        await broadcast_ws({
+            "event": "chat_lfm_response",
+            "data": {"question": question, "answer": lfm_answer},
+        })
+    except Exception as e:
+        logger.warning("Background LFM chat failed: %s", e)
+
+
+# Max age (seconds) for sensor_history[-1] to be considered "fresh"
+_FRESH_DATA_MAX_AGE = 30
 
 
 @app.post("/api/chat")
@@ -445,10 +455,20 @@ async def chat(req: ChatRequest):
     if not question:
         return {"answer": "Please ask a question.", "data_used": {}}
 
-    # Fetch live data from Jetson (best effort)
-    current = await _fetch_jetson_live_data()
+    # Use local history if fresh enough, otherwise try Jetson
+    current: dict | None = None
+    if sensor_history:
+        last = sensor_history[-1]
+        ts = last.get("timestamp", "")
+        try:
+            age = (datetime.now(timezone.utc) - datetime.fromisoformat(ts)).total_seconds()
+        except (ValueError, TypeError):
+            age = float("inf")
+        if age < _FRESH_DATA_MAX_AGE:
+            current = last
 
-    # Fall back to latest from our own history
+    if current is None:
+        current = await _fetch_jetson_live_data()
     if current is None and sensor_history:
         current = sensor_history[-1]
 
@@ -457,7 +477,12 @@ async def chat(req: ChatRequest):
     # Fire A2A query for panel visibility (non-blocking)
     asyncio.create_task(_send_a2a_query(question))
 
-    answer = await _generate_chat_answer(question, current, stats)
+    # Fast path: return data-only answer immediately
+    answer = _data_only_answer(question, current, stats)
+
+    # Run LFM in background — result will appear in the reasoning panel
+    if lfm_client:
+        asyncio.create_task(_background_lfm_chat(question, current, stats))
 
     # Track in A2A feed so it shows in the conversation panel
     _record_a2a_message("query", {

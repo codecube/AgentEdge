@@ -19,7 +19,7 @@ logging.basicConfig(
 
 SERIAL_PORT = os.getenv("SERIAL_PORT", "/dev/ttyACM0")
 SERIAL_BAUD = int(os.getenv("SERIAL_BAUD", "9600"))
-SERIAL_TIMEOUT = 5  # seconds
+SERIAL_TIMEOUT = 8  # seconds — must be > Arduino send interval (5s)
 
 server = Server("arduino-sensor")
 serial_conn: serial.Serial | None = None
@@ -38,6 +38,7 @@ def read_sensor_data() -> dict | None:
     """Read one JSON line from Arduino serial."""
     try:
         conn = get_serial()
+        conn.reset_input_buffer()  # discard stale buffered data
         line = conn.readline().decode("utf-8").strip()
         if not line:
             return None
