@@ -115,7 +115,7 @@ def _render_temp_humidity_chart(readings: list[dict]):
     layout["height"] = 260
 
     fig.update_layout(**layout)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def _render_eco2_tvoc_chart(readings: list[dict]):
@@ -156,4 +156,4 @@ def _render_eco2_tvoc_chart(readings: list[dict]):
     layout["height"] = 260
 
     fig.update_layout(**layout)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
