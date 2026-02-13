@@ -87,6 +87,20 @@ async def sensor_push(reading: dict):
             "status": "active",
         }
 
+    # Record in A2A message flow
+    from datetime import datetime, timezone
+
+    state.record_a2a_message(
+        "sensor_observation",
+        {
+            "type": "sensor_observation",
+            "from": "jetson-site-a",
+            "to": config.AGENT_ID,
+            "timestamp": reading.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+            "payload": reading,
+        },
+    )
+
     # Trim history
     cutoff_count = int(config.HISTORICAL_WINDOW_HOURS * 3600 / 5)
     if len(state.sensor_history) > cutoff_count:
