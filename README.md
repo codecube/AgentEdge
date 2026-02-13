@@ -61,6 +61,7 @@ agent-edge/
 ├── agents/
 │   ├── jetson/                  # Site A: sensor reading + anomaly detection
 │   │   ├── agent.py             # FastAPI server on :8080
+│   │   ├── cli_chat.py          # Interactive CLI chat (LFM + live sensor)
 │   │   ├── config.py            # Thresholds and environment config
 │   │   └── mcp_client.py        # MCP client for Arduino server
 │   └── macmini/                 # Control: historical analysis + dashboard
@@ -131,6 +132,21 @@ The Jetson agent will:
 - Send observations to the Mac Mini via A2A
 - Detect anomalies and trigger collaborative analysis
 - Serve WebSocket stream on `ws://0.0.0.0:8080/stream`
+
+#### Interactive CLI Chat
+
+For demos and debugging, you can also run the standalone CLI chat directly on the Jetson terminal:
+
+```bash
+python3 -m agents.jetson.cli_chat
+```
+
+This gives you an interactive REPL where you can:
+- Type `/sensor` to read live sensor data from the Arduino
+- Ask free-text questions — LFM responds with streaming output, using live sensor data as context
+- Type `/help` to see all commands, `/quit` to exit
+
+The CLI works with graceful degradation: if no Arduino is connected, chat still works with LFM; if LFM isn't available, sensor reads still work.
 
 ### 3. Mac Mini Agent (Control Center)
 
@@ -213,7 +229,7 @@ This starts both agents and the dashboard. Press `Ctrl+C` to stop all components
 python3 -m pytest tests/ -v
 ```
 
-23 tests covering A2A protocol serialization, agent cards, storage, and anomaly thresholds.
+39 tests covering A2A protocol serialization, agent cards, chat, storage, and anomaly thresholds.
 
 ## Documentation
 
