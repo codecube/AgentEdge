@@ -37,8 +37,6 @@ def render_chat_widget(macmini_url: str):
         if len(st.session_state.chat_history) > 40:
             st.session_state.chat_history = st.session_state.chat_history[-40:]
 
-        # Reset refresh timer so the auto-refresh doesn't conflict
-        st.session_state.last_refresh = 0.0
         st.rerun()
 
 
@@ -63,14 +61,16 @@ def _send_question(macmini_url: str, question: str) -> str:
 
 def _render_user_message(content: str):
     """Render a user message with amber left border."""
+    safe = _escape(content)
     st.markdown(
         f"""<div style="border-left: 3px solid #ffaa00; padding: 8px 12px;
-            margin: 6px 0; background: #ffaa0010; border-radius: 0 4px 4px 0;">
+            margin: 6px 0; background: #ffaa0010; border-radius: 0 4px 4px 0;
+            word-wrap: break-word; overflow-wrap: break-word;">
             <span style="font-family: 'Outfit', sans-serif; font-size: 0.6rem;
                 font-weight: 600; color: #ffaa00; text-transform: uppercase;
                 letter-spacing: 0.08em;">You</span><br>
             <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
-                color: #e2e8f0;">{content}</span>
+                color: #e2e8f0;">{safe}</span>
         </div>""",
         unsafe_allow_html=True,
     )
@@ -78,14 +78,46 @@ def _render_user_message(content: str):
 
 def _render_agent_message(content: str):
     """Render an agent response with cyan left border."""
+    safe = _format_agent_content(content)
     st.markdown(
         f"""<div style="border-left: 3px solid #00f0ff; padding: 8px 12px;
-            margin: 6px 0; background: #00f0ff10; border-radius: 0 4px 4px 0;">
+            margin: 6px 0; background: #00f0ff10; border-radius: 0 4px 4px 0;
+            word-wrap: break-word; overflow-wrap: break-word;">
             <span style="font-family: 'Outfit', sans-serif; font-size: 0.6rem;
                 font-weight: 600; color: #00f0ff; text-transform: uppercase;
                 letter-spacing: 0.08em;">Agent</span><br>
-            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
-                color: #e2e8f0;">{content}</span>
+            {safe}
         </div>""",
         unsafe_allow_html=True,
+    )
+
+
+def _escape(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
+
+
+def _format_agent_content(text: str) -> str:
+    """Parse <think> tags: grey for thinking, cyan for answer."""
+    import re as _re
+
+    think_match = _re.search(r"<think>(.*?)</think>(.*)", text, _re.DOTALL)
+    if think_match:
+        thinking = _escape(think_match.group(1).strip())
+        answer = _escape(think_match.group(2).strip())
+        parts = []
+        if thinking:
+            parts.append(
+                f'<span style="font-family: \'JetBrains Mono\', monospace; font-size: 0.75rem;'
+                f' color: #64748b; font-style: italic;">{thinking}</span>'
+            )
+        if answer:
+            parts.append(
+                f'<span style="font-family: \'JetBrains Mono\', monospace; font-size: 0.8rem;'
+                f' color: #00f0ff;">{answer}</span>'
+            )
+        return "<br>".join(parts)
+    # No thinking tags — plain text answer in cyan
+    return (
+        f'<span style="font-family: \'JetBrains Mono\', monospace; font-size: 0.8rem;'
+        f' color: #00f0ff;">{_escape(text)}</span>'
     )

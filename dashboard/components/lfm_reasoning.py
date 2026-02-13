@@ -1,6 +1,8 @@
 """LFM reasoning display — token stream with air quality analysis."""
 from __future__ import annotations
 
+import re
+
 import streamlit as st
 
 
@@ -46,9 +48,9 @@ def render_lfm_reasoning(reasoning_events: list[dict]):
         )
         parts.append(ctx + "<br><br>")
 
-    # Show LFM output
+    # Show LFM output — separate thinking (grey) from answer (cyan)
     if lfm_text:
-        parts.append(f'<span style="color: #e2e8f0;">{_escape_html(lfm_text)}</span>')
+        parts.append(_format_lfm_output(lfm_text))
         parts.append('<span class="lfm-cursor"></span>')
     else:
         parts.append(
@@ -86,6 +88,26 @@ def render_lfm_reasoning(reasoning_events: list[dict]):
 def _aqi_color(aqi: int) -> str:
     colors = {1: "#22c55e", 2: "#84cc16", 3: "#ffaa00", 4: "#f97316", 5: "#ff3366"}
     return colors.get(aqi, "#64748b")
+
+
+def _format_lfm_output(text: str) -> str:
+    """Parse <think> tags: render thinking in grey, final answer in cyan."""
+    think_match = re.search(r"<think>(.*?)</think>(.*)", text, re.DOTALL)
+    if think_match:
+        thinking = _escape_html(think_match.group(1).strip())
+        answer = _escape_html(think_match.group(2).strip())
+        parts = []
+        if thinking:
+            parts.append(
+                f'<span style="color: #64748b; font-style: italic;">{thinking}</span>'
+            )
+        if answer:
+            parts.append(
+                f'<span style="color: #00f0ff;">{answer}</span>'
+            )
+        return "<br><br>".join(parts)
+    # No thinking tags — render everything in default color
+    return f'<span style="color: #e2e8f0;">{_escape_html(text)}</span>'
 
 
 def _escape_html(text: str) -> str:

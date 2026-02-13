@@ -15,9 +15,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import httpx
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 from dashboard.components.a2a_conversation import render_a2a_conversation
 from dashboard.components.agent_status import render_agent_status
+from dashboard.components.anomaly_banner import render_anomaly_banner
 from dashboard.components.chat_widget import render_chat_widget
 from dashboard.components.lfm_reasoning import render_lfm_reasoning
 from dashboard.components.sensor_viz import render_sensor_charts
@@ -32,6 +34,13 @@ st.set_page_config(
 )
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
+# --- Config ---
+MACMINI_URL = os.getenv("MACMINI_AGENT_URL", "http://localhost:8081")
+REFRESH_SECONDS = 2
+
+# --- Auto-refresh (browser-side JS timer — always executes) ---
+st_autorefresh(interval=REFRESH_SECONDS * 1000, key="data_refresh")
+
 # --- Session State ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -41,10 +50,6 @@ if "sensor_readings" not in st.session_state:
     st.session_state.sensor_readings = []
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-
-# --- Config ---
-MACMINI_URL = os.getenv("MACMINI_AGENT_URL", "http://localhost:8081")
-REFRESH_SECONDS = 2
 
 
 def fetch_all_data() -> dict:
@@ -112,7 +117,7 @@ _logo_b64 = _b64.b64encode(_LOGO_SVG.encode()).decode()
 header_html = f"""
 <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 8px;">
     <img src="data:image/svg+xml;base64,{_logo_b64}"
-         alt="Capgemini" style="height: 36px; opacity: 0.85;" />
+         alt="Capgemini" style="height: 52px; margin-top: 10px; opacity: 0.85;" />
     <div style="width: 1px; height: 24px; background: #334155;"></div>
     <h1 style="margin: 0; font-size: 1.8rem; letter-spacing: -0.04em;">AGENT EDGE</h1>
     <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
@@ -134,6 +139,9 @@ if data["messages"]:
     st.session_state.messages = data["messages"]
 if data["reasoning"]:
     st.session_state.reasoning_events = data["reasoning"]
+
+# --- Anomaly Banner (full-width, above layout) ---
+render_anomaly_banner(st.session_state.reasoning_events)
 
 # --- Layout ---
 
@@ -172,16 +180,3 @@ footer_html = """
 </div>
 """
 st.markdown(footer_html, unsafe_allow_html=True)
-
-# --- Auto-refresh (non-blocking) ---
-import time as _time
-
-if "last_refresh" not in st.session_state:
-    st.session_state.last_refresh = 0.0
-
-_now = _time.time()
-_elapsed = _now - st.session_state.last_refresh
-if _elapsed >= REFRESH_SECONDS:
-    st.session_state.last_refresh = _now
-    _time.sleep(0.05)  # tiny yield so Streamlit processes pending interactions
-    st.rerun()

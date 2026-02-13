@@ -167,6 +167,22 @@ code, pre, .stCode {
     50% { opacity: 0; }
 }
 
+/* Anomaly alert banner */
+@keyframes pulse-crimson-border {
+    0%, 100% { border-left-color: #ff3366; }
+    50% { border-left-color: #ff336666; }
+}
+
+.anomaly-banner {
+    background: linear-gradient(90deg, #ff336612, #ff33660a, transparent);
+    border: 1px solid #ff336633;
+    border-left: 4px solid #ff3366;
+    border-radius: 0 4px 4px 0;
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    animation: pulse-crimson-border 2s ease-in-out infinite;
+}
+
 /* AQI gauge */
 .aqi-bar {
     display: flex;

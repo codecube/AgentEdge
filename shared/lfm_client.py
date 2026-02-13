@@ -44,7 +44,7 @@ class LFMClient:
 
         logger.info("LFM client ready")
 
-    async def analyze(self, prompt: str, max_tokens: int = 256) -> str:
+    async def analyze(self, prompt: str, max_tokens: int = 1024) -> str:
         """Run analysis and return full response text."""
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
@@ -64,7 +64,7 @@ class LFMClient:
             return resp.json().get("response", "")
 
     async def analyze_streaming(
-        self, prompt: str, max_tokens: int = 256
+        self, prompt: str, max_tokens: int = 1024
     ) -> AsyncGenerator[str, None]:
         """Generate response tokens for streaming display."""
         async with httpx.AsyncClient(timeout=120.0) as client:
