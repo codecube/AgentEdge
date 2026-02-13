@@ -133,7 +133,16 @@ def _extract_reply(response: dict) -> str:
                 if part.get("kind") == "text" and part.get("text", "").strip():
                     return part["text"]
 
-    # Fallback: direct message
+    # Result is itself a direct message (A2A SDK format)
+    if result.get("role") == "agent" and result.get("parts"):
+        for part in result["parts"]:
+            meta = part.get("metadata") or {}
+            if meta.get("adk_thought"):
+                continue
+            if part.get("kind") == "text" and part.get("text", "").strip():
+                return part["text"]
+
+    # Fallback: nested message field
     message = result.get("message")
     if not message:
         message = (result.get("status") or {}).get("message")

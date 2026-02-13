@@ -37,7 +37,7 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # --- Config ---
 MACMINI_URL = os.getenv("MACMINI_AGENT_URL", "http://localhost:8081")
-REFRESH_SECONDS = 2
+REFRESH_SECONDS = 5
 
 # --- Auto-refresh (browser-side JS timer — always executes) ---
 st_autorefresh(interval=REFRESH_SECONDS * 1000, key="data_refresh")

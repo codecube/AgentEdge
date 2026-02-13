@@ -70,7 +70,13 @@ def extract_agent_reply(response: dict) -> str:
             if texts:
                 return "\n".join(texts)
 
-    # --- Direct message response ---
+    # --- Result is itself a direct message (A2A SDK format) ---
+    if result.get("role") == "agent" and result.get("parts"):
+        texts = _extract_text_parts(result["parts"])
+        if texts:
+            return "\n".join(texts)
+
+    # --- Nested message field ---
     message = result.get("message")
     if not message:
         # Task-based response
