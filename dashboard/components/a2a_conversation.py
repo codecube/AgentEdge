@@ -43,7 +43,7 @@ def _format_message(msg: dict) -> str:
         agent_label = "JETSON"
     elif "macmini" in from_agent.lower() or "mac" in from_agent.lower():
         agent_class = "msg-macmini"
-        agent_label = "MACMINI"
+        agent_label = "MAC"
     else:
         agent_class = "msg-system"
         agent_label = "SYSTEM"

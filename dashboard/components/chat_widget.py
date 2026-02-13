@@ -48,13 +48,13 @@ def _send_question(macmini_url: str, question: str) -> str:
         resp = httpx.post(
             f"{macmini_url}/api/chat",
             json={"question": question},
-            timeout=5.0,
+            timeout=10.0,
         )
         if resp.status_code == 200:
             return resp.json().get("answer", "No answer received.")
         return f"Agent returned status {resp.status_code}."
     except httpx.ConnectError:
-        return "Mac Mini agent is not reachable."
+        return "Mac agent is not reachable."
     except httpx.TimeoutException:
         return "Request timed out — the agent may be busy."
     except Exception as e:

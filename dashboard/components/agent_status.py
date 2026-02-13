@@ -8,23 +8,19 @@ def render_agent_status(jetson_status: dict | None, macmini_status: dict | None)
     """Render agent connection status cards."""
     st.markdown('<div class="section-header">Agent Status</div>', unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        _render_agent_card(
-            name="Jetson Orin Nano",
-            role="Site A",
-            status=jetson_status,
-            accent="#00f0ff",
-        )
-
-    with col2:
-        _render_agent_card(
-            name="Mac Mini M2",
-            role="Control",
-            status=macmini_status,
-            accent="#ffaa00",
-        )
+    _render_agent_card(
+        name="Jetson Orin Nano",
+        role="Site A",
+        status=jetson_status,
+        accent="#00f0ff",
+    )
+    st.markdown('<div style="margin-top: 12px;"></div>', unsafe_allow_html=True)
+    _render_agent_card(
+        name="Mac M2",
+        role="Control",
+        status=macmini_status,
+        accent="#ffaa00",
+    )
 
 
 def _render_agent_card(name: str, role: str, status: dict | None, accent: str):
