@@ -89,6 +89,26 @@ def _format_message(msg: dict) -> str:
             f'<span style="color:#94a3b8;">({conf:.0%}) {answer}</span></div>'
         )
 
+    if msg_type == "query":
+        payload = data.get("payload", {})
+        question = payload.get("question", "")[:80]
+        return (
+            f'<div><span style="color:#475569;">{time_str}</span> '
+            f'<span class="{agent_class}">[{agent_label}]</span> '
+            f'<span style="color:#a78bfa;">query</span> '
+            f'<span style="color:#94a3b8;">{question}</span></div>'
+        )
+
+    if msg_type == "query_response":
+        payload = data.get("payload", {})
+        answer = payload.get("answer", "")[:80]
+        return (
+            f'<div><span style="color:#475569;">{time_str}</span> '
+            f'<span class="{agent_class}">[{agent_label}]</span> '
+            f'<span style="color:#a78bfa;">query_response</span> '
+            f'<span style="color:#94a3b8;">{answer}</span></div>'
+        )
+
     if msg_type == "heartbeat":
         return (
             f'<div><span style="color:#475569;">{time_str}</span> '

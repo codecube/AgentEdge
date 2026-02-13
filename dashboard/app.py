@@ -6,6 +6,7 @@ Run: streamlit run dashboard/app.py
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -19,6 +20,7 @@ import streamlit as st
 
 from dashboard.components.a2a_conversation import render_a2a_conversation
 from dashboard.components.agent_status import render_agent_status
+from dashboard.components.chat_widget import render_chat_widget
 from dashboard.components.lfm_reasoning import render_lfm_reasoning
 from dashboard.components.sensor_viz import render_sensor_charts
 from dashboard.style import CUSTOM_CSS
@@ -28,7 +30,7 @@ st.set_page_config(
     page_title="Agent Edge",
     page_icon="",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
@@ -39,10 +41,12 @@ if "reasoning_events" not in st.session_state:
     st.session_state.reasoning_events = []
 if "sensor_readings" not in st.session_state:
     st.session_state.sensor_readings = []
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
 
 # --- Config ---
-JETSON_URL = "http://localhost:8080"
-MACMINI_URL = "http://localhost:8081"
+JETSON_URL = os.getenv("JETSON_AGENT_URL", "http://localhost:8080")
+MACMINI_URL = os.getenv("MACMINI_AGENT_URL", "http://localhost:8081")
 REFRESH_INTERVAL = 1  # seconds
 
 
@@ -108,6 +112,10 @@ with bottom_left:
 
 with bottom_right:
     render_lfm_reasoning(st.session_state.reasoning_events)
+
+# --- Sidebar Chat ---
+with st.sidebar:
+    render_chat_widget(MACMINI_URL)
 
 # --- Footer ---
 footer_html = """

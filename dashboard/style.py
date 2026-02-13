@@ -199,6 +199,23 @@ code, pre, .stCode {
     margin-bottom: 16px;
 }
 
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: var(--bg-secondary) !important;
+    border-right: 1px solid var(--border) !important;
+}
+
+section[data-testid="stSidebar"] .stChatInput {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border) !important;
+}
+
+section[data-testid="stSidebar"] .stChatInput input {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.8rem !important;
+    color: var(--text-primary) !important;
+}
+
 /* Plotly chart background override */
 .js-plotly-plot .plotly .main-svg { background: transparent !important; }
 </style>

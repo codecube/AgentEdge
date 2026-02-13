@@ -18,6 +18,8 @@ class MessageType(str, Enum):
     ANALYSIS_RESPONSE = "analysis_response"
     DECISION = "decision"
     HEARTBEAT = "heartbeat"
+    QUERY = "query"
+    QUERY_RESPONSE = "query_response"
 
 
 class AgentStatus(str, Enum):
@@ -73,6 +75,18 @@ class DecisionPayload(BaseModel):
     reasoning: dict = {}
 
 
+class QueryPayload(BaseModel):
+    question: str
+    source: str = "dashboard"
+    context: dict = {}
+
+
+class QueryResponsePayload(BaseModel):
+    answer: str
+    data: dict = {}
+    source_agent: str = ""
+
+
 # --- Message Models ---
 
 
@@ -125,6 +139,17 @@ class Heartbeat(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class Query(A2AMessage):
+    type: MessageType = MessageType.QUERY
+    payload: QueryPayload
+
+
+class QueryResponse(A2AMessage):
+    type: MessageType = MessageType.QUERY_RESPONSE
+    in_reply_to: str = ""
+    payload: QueryResponsePayload
+
+
 # --- Utilities ---
 
 MESSAGE_TYPE_MAP = {
@@ -134,6 +159,8 @@ MESSAGE_TYPE_MAP = {
     MessageType.DECISION: Decision,
     MessageType.HEARTBEAT: Heartbeat,
     MessageType.AGENT_CARD: AgentCardPayload,
+    MessageType.QUERY: Query,
+    MessageType.QUERY_RESPONSE: QueryResponse,
 }
 
 

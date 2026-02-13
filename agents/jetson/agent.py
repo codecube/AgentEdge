@@ -20,6 +20,9 @@ from shared.a2a_protocol import (
     DecisionPayload,
     Heartbeat,
     MessageType,
+    Query,
+    QueryResponse,
+    QueryResponsePayload,
     SensorObservation,
     SensorPayload,
     parse_message,
@@ -273,6 +276,14 @@ async def health():
     return card.model_dump()
 
 
+@app.get("/api/sensor/current")
+async def sensor_current():
+    """Return the latest sensor reading."""
+    if previous_reading is None:
+        return {"status": "no_data", "reading": None}
+    return {"status": "ok", "reading": previous_reading}
+
+
 @app.post("/a2a/message")
 async def receive_message(data: dict):
     """Receive an A2A message from a peer agent."""
@@ -299,6 +310,25 @@ async def receive_message(data: dict):
         await broadcast_ws(
             {"event": "decision", "data": decision.model_dump(by_alias=True)}
         )
+
+    elif isinstance(msg, Query):
+        logger.info("Received query: %s", msg.payload.question)
+        reading_data = previous_reading or {}
+        response = QueryResponse(
+            **{"from": config.AGENT_ID},
+            to=data.get("from", "unknown"),
+            in_reply_to=msg.message_id,
+            payload=QueryResponsePayload(
+                answer=f"Current reading: {reading_data}" if reading_data else "No sensor data available",
+                data=reading_data,
+                source_agent=config.AGENT_ID,
+            ),
+        )
+        sender_url = config.MACMINI_AGENT_URL
+        try:
+            await send_message(sender_url, response)
+        except Exception as e:
+            logger.warning("Failed to send query response: %s", e)
 
     return {"status": "received", "message_id": data.get("message_id")}
 

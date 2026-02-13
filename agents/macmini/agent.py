@@ -9,7 +9,10 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
+import re
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel as PydanticBaseModel
 
 from agents.macmini import config
 from shared.a2a_protocol import (
@@ -18,6 +21,9 @@ from shared.a2a_protocol import (
     AnalysisResponsePayload,
     Heartbeat,
     MessageType,
+    Query,
+    QueryPayload,
+    QueryResponse,
     SensorObservation,
     parse_message,
     send_message,
@@ -253,6 +259,153 @@ async def get_history(limit: int = 100):
     return sensor_history[-limit:]
 
 
+# --- Chat ---
+
+
+class ChatRequest(PydanticBaseModel):
+    question: str
+
+
+async def _fetch_jetson_live_data() -> dict | None:
+    """GET the latest sensor reading from Jetson (2s timeout)."""
+    import httpx as _httpx
+
+    try:
+        async with _httpx.AsyncClient(timeout=2.0) as client:
+            resp = await client.get(f"{config.JETSON_AGENT_URL}/api/sensor/current")
+            if resp.status_code == 200:
+                body = resp.json()
+                if body.get("status") == "ok":
+                    return body["reading"]
+    except Exception:
+        pass
+    return None
+
+
+async def _send_a2a_query(question: str):
+    """Fire-and-forget A2A QUERY so it shows in the dashboard panel."""
+    try:
+        msg = Query(
+            **{"from": config.AGENT_ID},
+            to="jetson-site-a",
+            payload=QueryPayload(question=question, source="dashboard"),
+        )
+        await send_message(config.JETSON_AGENT_URL, msg)
+    except Exception as e:
+        logger.debug("A2A query send failed (non-critical): %s", e)
+
+
+def _data_only_answer(question: str, current: dict | None, stats: dict) -> str:
+    """Pattern-match the question against sensor fields for a plain-text answer."""
+    q = question.lower()
+
+    if current:
+        if re.search(r"humid", q):
+            return f"Current humidity at Site A is {current.get('humidity')}%."
+        if re.search(r"temp", q):
+            return f"Current temperature at Site A is {current.get('temperature')}C."
+        if re.search(r"eco2|co2|carbon", q):
+            return f"Current eCO2 at Site A is {current.get('eco2')} ppm."
+        if re.search(r"tvoc|voc", q):
+            return f"Current TVOC at Site A is {current.get('tvoc')} ppb."
+        if re.search(r"aqi|air.?quality", q):
+            return f"Current AQI at Site A is {current.get('aqi')}/5."
+
+    # General / summary
+    if current:
+        return (
+            f"Site A sensor readings: temperature {current.get('temperature')}C, "
+            f"humidity {current.get('humidity')}%, eCO2 {current.get('eco2')} ppm, "
+            f"TVOC {current.get('tvoc')} ppb, AQI {current.get('aqi')}/5."
+        )
+
+    if stats:
+        parts = []
+        for field, s in stats.items():
+            parts.append(f"{field}: mean={s['mean']}")
+        return "No live data available. Historical averages: " + ", ".join(parts) + "."
+
+    return "No sensor data is available at this time."
+
+
+def _build_chat_prompt(question: str, current: dict | None, stats: dict) -> str:
+    """Build a structured prompt for LFM with sensor context."""
+    if current:
+        sensor_block = (
+            f"- Temperature: {current.get('temperature')}C\n"
+            f"- Humidity: {current.get('humidity')}%\n"
+            f"- eCO2: {current.get('eco2')} ppm\n"
+            f"- TVOC: {current.get('tvoc')} ppb\n"
+            f"- AQI: {current.get('aqi')}/5"
+        )
+    else:
+        sensor_block = "- No live sensor data available"
+
+    stats_lines = []
+    count = 0
+    for field, s in stats.items():
+        stats_lines.append(
+            f"  {field}: mean={s['mean']}, stdev={s['stdev']}, min={s['min']}, max={s['max']}"
+        )
+        count = s.get("count", count)
+    stats_formatted = "\n".join(stats_lines) if stats_lines else "  No historical data"
+
+    return (
+        "You are an AI assistant for the Agent Edge environmental monitoring system.\n"
+        "You have access to sensor data from an ENS160+AHT21 module at Site A.\n\n"
+        f"Current sensor data:\n{sensor_block}\n\n"
+        f"Historical statistics ({count} readings):\n{stats_formatted}\n\n"
+        f"User question: {question}\n\n"
+        "Provide a concise, factual answer based on the sensor data above."
+    )
+
+
+async def _generate_chat_answer(
+    question: str, current: dict | None, stats: dict
+) -> str:
+    """Use LFM if available, otherwise fall back to keyword-based data answer."""
+    if lfm_client:
+        try:
+            prompt = _build_chat_prompt(question, current, stats)
+            return await lfm_client.analyze(prompt)
+        except Exception as e:
+            logger.warning("LFM chat failed, falling back to data answer: %s", e)
+    return _data_only_answer(question, current, stats)
+
+
+@app.post("/api/chat")
+async def chat(req: ChatRequest):
+    """Answer a natural-language question about sensor data."""
+    question = req.question.strip()
+    if not question:
+        return {"answer": "Please ask a question.", "data_used": {}}
+
+    # Fetch live data from Jetson (best effort)
+    current = await _fetch_jetson_live_data()
+
+    # Fall back to latest from our own history
+    if current is None and sensor_history:
+        current = sensor_history[-1]
+
+    stats = compute_statistics()
+
+    # Fire A2A query for panel visibility (non-blocking)
+    asyncio.create_task(_send_a2a_query(question))
+
+    answer = await _generate_chat_answer(question, current, stats)
+
+    # Broadcast the exchange via WebSocket
+    await broadcast_ws({
+        "event": "chat_query",
+        "data": {"question": question, "answer": answer},
+    })
+
+    return {
+        "answer": answer,
+        "data_used": current or {},
+    }
+
+
 @app.post("/a2a/message")
 async def receive_message(data: dict):
     """Receive an A2A message from a peer agent."""
@@ -267,6 +420,9 @@ async def receive_message(data: dict):
 
     elif msg_type == MessageType.ANALYSIS_REQUEST:
         asyncio.create_task(handle_analysis_request(data))
+
+    elif msg_type == MessageType.QUERY_RESPONSE:
+        logger.info("Received query response from %s", data.get("from"))
 
     elif msg_type == MessageType.HEARTBEAT:
         global peer_card
