@@ -114,14 +114,28 @@ def detect_anomaly(reading: dict) -> list[str]:
 
 
 async def sensor_loop():
-    """Main sensor reading loop."""
-    global previous_reading
+    """Main sensor reading loop.
+
+    The MCP client is connected here (not in lifespan) so the anyio cancel
+    scope created by stdio_client stays within this single asyncio task.
+    """
+    global mcp_client, previous_reading
+
+    try:
+        from agents.jetson.mcp_client import MCPArduinoClient
+
+        mcp_cm = MCPArduinoClient(config.SERIAL_PORT, config.SERIAL_BAUD)
+        mcp_client = await mcp_cm.__aenter__()
+        logger.info("MCP client connected in sensor loop")
+    except Exception as e:
+        logger.warning("MCP client not available: %s", e)
+        mcp_client = None
 
     while True:
         try:
             reading = None
 
-            # Try MCP client first, fall back to mock
+            # Try MCP client first
             if mcp_client:
                 reading = await mcp_client.read_sensor()
             else:
@@ -222,16 +236,9 @@ async def lifespan(app: FastAPI):
     """Startup and shutdown."""
     logger.info("Starting Jetson Agent: %s on port %d", config.AGENT_ID, config.AGENT_PORT)
 
-    # Try to initialize MCP client
-    global mcp_client, lfm_client
-    try:
-        from agents.jetson.mcp_client import MCPArduinoClient
-
-        mcp_client = MCPArduinoClient(config.SERIAL_PORT, config.SERIAL_BAUD)
-        await mcp_client.connect()
-        logger.info("MCP client connected")
-    except Exception as e:
-        logger.warning("MCP client not available: %s", e)
+    # MCP client is initialized inside sensor_loop to keep anyio cancel
+    # scopes within a single task.
+    global lfm_client
 
     # Try to initialize LFM client
     try:

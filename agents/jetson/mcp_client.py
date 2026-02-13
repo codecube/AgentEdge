@@ -11,29 +11,42 @@ logger = logging.getLogger(__name__)
 
 
 class MCPArduinoClient:
-    """Client for the MCP Arduino sensor server."""
+    """Client for the MCP Arduino sensor server.
+
+    Must be used as an async context manager so the stdio_client cancel scope
+    stays within the same asyncio task.
+    """
 
     def __init__(self, serial_port: str, serial_baud: int):
         self.serial_port = serial_port
         self.serial_baud = serial_baud
         self.session: ClientSession | None = None
-        self._context = None
+        self._stdio_cm = None
+        self._session_cm = None
 
-    async def connect(self):
-        """Connect to the MCP Arduino server process."""
+    async def __aenter__(self) -> MCPArduinoClient:
         server_params = StdioServerParameters(
-            command="python",
+            command="python3",
             args=["mcp_servers/arduino/server.py"],
             env={
                 "SERIAL_PORT": self.serial_port,
                 "SERIAL_BAUD": str(self.serial_baud),
             },
         )
-        self._read, self._write = await stdio_client(server_params).__aenter__()
-        self.session = ClientSession(self._read, self._write)
-        await self.session.__aenter__()
+        self._stdio_cm = stdio_client(server_params)
+        read_stream, write_stream = await self._stdio_cm.__aenter__()
+        self._session_cm = ClientSession(read_stream, write_stream)
+        self.session = await self._session_cm.__aenter__()
         await self.session.initialize()
         logger.info("MCP client connected to Arduino server")
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self._session_cm:
+            await self._session_cm.__aexit__(exc_type, exc_val, exc_tb)
+        if self._stdio_cm:
+            await self._stdio_cm.__aexit__(exc_type, exc_val, exc_tb)
+        self.session = None
 
     async def read_sensor(self) -> dict | None:
         """Call the read_sensor MCP tool and return parsed data."""
@@ -53,9 +66,3 @@ class MCPArduinoClient:
         except Exception as e:
             logger.error("MCP read_sensor failed: %s", e)
         return None
-
-    async def close(self):
-        """Close the MCP session."""
-        if self.session:
-            await self.session.__aexit__(None, None, None)
-        self.session = None
