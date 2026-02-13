@@ -165,7 +165,7 @@ class TestAgentCard:
         card = AgentCardPayload(
             agent_id="jetson-site-a",
             capabilities=["sensor_reading", "anomaly_detection"],
-            model="LiquidAI/LFM-2.5-1B",
+            model="LiquidAI/LFM2.5-1.2B-Thinking",
             endpoints=AgentEndpoints(
                 a2a="http://localhost:8080/a2a/message",
                 health="http://localhost:8080/health",

@@ -12,7 +12,7 @@ class TestCreateAgentCard:
             capabilities=["sensor_reading", "anomaly_detection"],
         )
         assert card.agent_id == "jetson-site-a"
-        assert card.model == "LiquidAI/LFM-2.5-1B"
+        assert card.model == "LiquidAI/LFM2.5-1.2B-Thinking"
         assert card.endpoints.a2a == "http://192.168.1.10:8080/a2a/message"
         assert card.endpoints.health == "http://192.168.1.10:8080/health"
         assert card.endpoints.stream == "ws://192.168.1.10:8080/stream"

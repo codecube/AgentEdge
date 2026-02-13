@@ -1,7 +1,7 @@
 # Project: Agent Edge - Multi-Site Edge Intelligence Demo
 
 ## Overview
-Build a distributed AI agent system demonstrating thought leadership in edge AI. Two autonomous agents (Jetson Orin Nano + Mac Mini M2) coordinate using A2A protocol, with one agent reading sensors via MCP protocol. Both agents run Liquid AI LFM 2.5 (1.2B) thinking models locally. This is a demo for AI Futures Lab showcasing edge intelligence, agent collaboration, and interoperability protocols.
+Build a distributed AI agent system demonstrating thought leadership in edge AI. Two autonomous agents (Jetson Orin Nano + Mac Mini M2) coordinate using A2A protocol, with one agent reading sensors via MCP protocol. Both agents run Liquid AI LFM2.5-1.2B-Thinking thinking models locally. This is a demo for AI Futures Lab showcasing edge intelligence, agent collaboration, and interoperability protocols.
 
 ## Project Context
 - **Purpose**: Demonstrate multi-location agent coordination with local LLM reasoning
@@ -27,7 +27,7 @@ Protocols Used:
 - A2A: Agent-to-Agent collaboration (peer-to-peer)
 
 Storage: Simple JSON Lines files (no database complexity)
-LLM: Liquid AI LFM 2.5 1.2B via HuggingFace on both agents
+LLM: Liquid AI LFM2.5-1.2B-Thinking via HuggingFace on both agents
 ```
 
 ## Technology Stack
@@ -224,10 +224,10 @@ agent-edge/
 
 ### 3. LFM 2.5 Integration (`shared/lfm_client.py`)
 
-**Purpose**: Wrapper for Liquid AI LFM 2.5 1.2B model
+**Purpose**: Wrapper for Liquid AI LFM2.5-1.2B-Thinking model
 
 **Requirements**:
-- Load from HuggingFace: `LiquidAI/LFM-2.5-1B` (or correct model ID)
+- Load from HuggingFace: `LiquidAI/LFM2.5-1.2B-Thinking` (or correct model ID)
 - Support streaming token generation
 - Prompt templates for:
   - Anomaly detection: "Analyze this sensor reading: temp={temp}°C, humidity={humidity}%, eCO2={eco2}ppm, TVOC={tvoc}ppb, AQI={aqi}. Previous: ..."
@@ -242,7 +242,7 @@ agent-edge/
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 class LFMClient:
-    def __init__(self, model_name="LiquidAI/LFM-2.5-1B"):
+    def __init__(self, model_name="LiquidAI/LFM2.5-1.2B-Thinking"):
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             device_map="auto",  # Auto GPU/CPU
@@ -294,7 +294,7 @@ AGENT_ID = "jetson-site-a"
 AGENT_PORT = 8080
 MCP_ARDUINO_SERVER = "./mcp_servers/arduino/server.py"
 MACMINI_AGENT_URL = "http://192.168.1.x:8081"  # Configure actual IP
-LFM_MODEL = "LiquidAI/LFM-2.5-1B"
+LFM_MODEL = "LiquidAI/LFM2.5-1.2B-Thinking"
 SENSOR_POLL_INTERVAL = 5  # seconds
 # Anomaly thresholds
 TEMP_DELTA_THRESHOLD = 5    # degrees celsius
@@ -335,7 +335,7 @@ LOG_FILE = "jetson_agent.jsonl"
 AGENT_ID = "macmini-control"
 AGENT_PORT = 8081
 JETSON_AGENT_URL = "http://jetson-ip:8080"  # Configure actual IP
-LFM_MODEL = "LiquidAI/LFM-2.5-1B"
+LFM_MODEL = "LiquidAI/LFM2.5-1.2B-Thinking"
 LOG_FILE = "macmini_agent.jsonl"
 HISTORICAL_WINDOW_HOURS = 24
 ```
@@ -575,7 +575,7 @@ void loop() {
 
 ## Questions for Implementation
 
-1. **HuggingFace Model ID**: What's the exact model ID for Liquid AI LFM 2.5 1.2B on HuggingFace?
+1. **HuggingFace Model ID**: What's the exact model ID for Liquid AI LFM2.5-1.2B-Thinking on HuggingFace?
    - Search HuggingFace if uncertain, or use placeholder and document for later
 
 2. **Network Configuration**: 

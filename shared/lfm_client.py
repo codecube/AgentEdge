@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class LFMClient:
-    """Wrapper for Liquid AI LFM 2.5 1.2B model."""
+    """Wrapper for Liquid AI LFM2.5-1.2B-Thinking model."""
 
-    def __init__(self, model_name: str = "LiquidAI/LFM-2.5-1B"):
+    def __init__(self, model_name: str = "LiquidAI/LFM2.5-1.2B-Thinking"):
         logger.info("Loading LFM model: %s", model_name)
 
         # Detect device

@@ -10,7 +10,7 @@ def create_agent_card(
     host: str,
     port: int,
     capabilities: list[str],
-    model: str = "LiquidAI/LFM-2.5-1B",
+    model: str = "LiquidAI/LFM2.5-1.2B-Thinking",
 ) -> AgentCardPayload:
     """Create an Agent Card for advertising this agent's capabilities."""
     base_url = f"http://{host}:{port}"

@@ -181,7 +181,7 @@ doc.add_paragraph(
 )
 add_bullet(doc, "Agent-Oriented Architectures replacing traditional SOA and microservices", bold_prefix="Agents as the new APIs:")
 add_bullet(doc, "Google\u2019s A2A protocol enabling cross-vendor, cross-device agent collaboration", bold_prefix="Interoperability protocols:")
-add_bullet(doc, "Small, powerful language models (LFM 2.5 1.2B) running inference locally on edge hardware", bold_prefix="Edge-native intelligence:")
+add_bullet(doc, "Small, powerful language models (LFM2.5-1.2B-Thinking) running inference locally on edge hardware", bold_prefix="Edge-native intelligence:")
 
 doc.add_paragraph(
     "This system is not a prototype of the future. It is a working demonstration of what is possible today, "
@@ -260,7 +260,7 @@ doc.add_heading("1.3 AI at the Edge: Beyond the Cloud", level=2)
 
 doc.add_paragraph(
     "The release of compact, high-quality language models has fundamentally changed what is possible at the edge. "
-    "Models like LFM 2.5 1.2B can run entirely on local hardware\u2014a Jetson Orin Nano, a Mac Mini\u2014"
+    "Models like LFM2.5-1.2B-Thinking can run entirely on local hardware\u2014a Jetson Orin Nano, a Mac Mini\u2014"
     "with no cloud dependency, no data leaving the premises, and no per-token API costs."
 )
 doc.add_paragraph(
@@ -292,7 +292,7 @@ doc.add_paragraph(
     "Agent Edge is a distributed system with two autonomous agents coordinating via A2A protocol. "
     "The Jetson Orin Nano (Site A) reads environmental sensors through an Arduino via MCP protocol "
     "and performs anomaly detection. The Mac Mini M2 (Control Center) provides historical analysis "
-    "and hosts the real-time dashboard. Both agents run LFM 2.5 1.2B locally for reasoning."
+    "and hosts the real-time dashboard. Both agents run LFM2.5-1.2B-Thinking locally for reasoning."
 )
 
 # --- 2.1 Architecture Overview ---
@@ -564,7 +564,7 @@ add_bullet(doc, "Host dashboard data APIs and WebSocket streams")
 doc.add_heading("5.3 LFM 2.5 Integration", level=2)
 
 doc.add_paragraph(
-    "Both agents run Liquid AI\u2019s LFM 2.5 1.2B model locally. The Jetson uses CUDA acceleration; "
+    "Both agents run Liquid AI\u2019s LFM2.5-1.2B-Thinking model locally. The Jetson uses CUDA acceleration; "
     "the Mac Mini uses Apple\u2019s MPS (Metal Performance Shaders). The LFM client supports:"
 )
 add_bullet(doc, "Token-by-token streaming for real-time dashboard visualization")
@@ -937,7 +937,7 @@ tech_data = [
     ("Web Framework", "FastAPI + Uvicorn"),
     ("Agent Communication", "A2A Protocol (HTTP POST + WebSocket)"),
     ("Tool Integration", "MCP (Model Context Protocol)"),
-    ("LLM", "Liquid AI LFM 2.5 1.2B (HuggingFace Transformers)"),
+    ("LLM", "Liquid AI LFM2.5-1.2B-Thinking (HuggingFace Transformers)"),
     ("Dashboard", "Streamlit + Plotly"),
     ("Storage", "JSON Lines (append-only, no database)"),
 ]

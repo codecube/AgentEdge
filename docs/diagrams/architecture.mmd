@@ -6,13 +6,13 @@ graph TB
         ARDUINO["🔌 Arduino Uno<br/><i>ENS160+AHT21</i><br/><code>temp | humidity | eCO2 | TVOC | AQI</code>"]
         MCP_SERVER["⚙️ MCP Arduino Server<br/><i>read_sensor tool</i><br/><code>stdio transport</code>"]
         JETSON["🤖 Jetson Agent<br/><i>Anomaly Detection</i><br/><code>FastAPI :8080</code>"]
-        LFM_J["🧠 LFM 2.5 1.2B<br/><i>CUDA inference</i>"]
+        LFM_J["🧠 LFM2.5-1.2B-Thinking<br/><i>CUDA inference</i>"]
     end
 
     subgraph CONTROL["<b>CONTROL CENTER — Mac Mini M2</b>"]
         direction TB
         MACMINI["🤖 Mac Mini Agent<br/><i>Historical Analysis</i><br/><code>FastAPI :8081</code>"]
-        LFM_M["🧠 LFM 2.5 1.2B<br/><i>MPS inference</i>"]
+        LFM_M["🧠 LFM2.5-1.2B-Thinking<br/><i>MPS inference</i>"]
         DASHBOARD["📊 Streamlit Dashboard<br/><i>Real-time Visualization</i><br/><code>:8501</code>"]
     end
 

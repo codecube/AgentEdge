@@ -1,7 +1,7 @@
 # Agent Edge - Multi-Site Edge Intelligence Demo
 
 ## Project Overview
-Distributed AI agent system: two autonomous agents (Jetson Orin Nano + Mac Mini M2) coordinate via A2A protocol. The Jetson reads an ENS160+AHT21 sensor module (temperature, humidity, eCO2, TVOC, AQI) through an Arduino via MCP protocol. Both agents run Liquid AI LFM 2.5 (1.2B) locally. Dashboard via Streamlit.
+Distributed AI agent system: two autonomous agents (Jetson Orin Nano + Mac Mini M2) coordinate via A2A protocol. The Jetson reads an ENS160+AHT21 sensor module (temperature, humidity, eCO2, TVOC, AQI) through an Arduino via MCP protocol. Both agents run Liquid AI LFM2.5-1.2B-Thinking locally. Dashboard via Streamlit.
 
 ## Architecture
 ```
@@ -10,7 +10,7 @@ Distributed AI agent system: two autonomous agents (Jetson Orin Nano + Mac Mini 
 
 ## Key Tech
 - **Python 3.10+**, FastAPI, WebSocket, asyncio
-- **LLM**: LiquidAI/LFM-2.5-1B via HuggingFace Transformers
+- **LLM**: LiquidAI/LFM2.5-1.2B-Thinking via HuggingFace Transformers
 - **Sensor**: ENS160 (eCO2, TVOC, AQI) + AHT21 (temp, humidity) over I2C
 - **Arduino**: ScioSense_ENS160 + Adafruit_AHTX0 libraries, JSON over serial at 9600 baud
 - **Protocols**: MCP (agent-to-system), A2A (agent-to-agent)

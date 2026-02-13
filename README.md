@@ -9,7 +9,7 @@ Agent Edge is a working demonstration built for [Capgemini's AI Futures Lab](htt
 - **Agents as the new APIs** — autonomous agents replacing rigid service-to-service integrations
 - **A2A Protocol** — Google's Agent-to-Agent protocol for cross-device agent collaboration
 - **MCP Protocol** — Anthropic's Model Context Protocol for agent-to-system integration
-- **On-device intelligence** — Liquid AI LFM 2.5 (1.2B) running locally on edge hardware
+- **On-device intelligence** — Liquid AI LFM2.5-1.2B-Thinking running locally on edge hardware
 - **Visible reasoning** — watch two AI agents think and collaborate in real time on a live dashboard
 
 ## Architecture
@@ -119,7 +119,7 @@ mkdir -p data
 export MACMINI_AGENT_URL=http://<macmini-ip>:8081
 export SERIAL_PORT=/dev/ttyACM0   # Arduino serial port
 # export SERIAL_BAUD=9600         # Default, change if needed
-# export LFM_MODEL=LiquidAI/LFM-2.5-1B  # Default
+# export LFM_MODEL=LiquidAI/LFM2.5-1.2B-Thinking  # Default
 
 # Run the agent
 python -m agents.jetson.agent
@@ -150,7 +150,7 @@ mkdir -p data
 
 # Configure environment
 export JETSON_AGENT_URL=http://<jetson-ip>:8080
-# export LFM_MODEL=LiquidAI/LFM-2.5-1B  # Default
+# export LFM_MODEL=LiquidAI/LFM2.5-1.2B-Thinking  # Default
 
 # Run the agent
 python -m agents.macmini.agent
@@ -191,7 +191,7 @@ This starts both agents and the dashboard. Press `Ctrl+C` to stop all components
 | `MACMINI_AGENT_URL` | `http://localhost:8081` | Mac Mini agent URL |
 | `SERIAL_PORT` | `/dev/ttyACM0` | Arduino serial port |
 | `SERIAL_BAUD` | `9600` | Arduino baud rate |
-| `LFM_MODEL` | `LiquidAI/LFM-2.5-1B` | HuggingFace model ID |
+| `LFM_MODEL` | `LiquidAI/LFM2.5-1.2B-Thinking` | HuggingFace model ID |
 | `JETSON_HOST` | `0.0.0.0` | Bind address |
 | `JETSON_PORT` | `8080` | Agent port |
 | `JETSON_LOG_FILE` | `data/jetson_agent.jsonl` | Log file path |
@@ -202,7 +202,7 @@ This starts both agents and the dashboard. Press `Ctrl+C` to stop all components
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `JETSON_AGENT_URL` | `http://localhost:8080` | Jetson agent URL |
-| `LFM_MODEL` | `LiquidAI/LFM-2.5-1B` | HuggingFace model ID |
+| `LFM_MODEL` | `LiquidAI/LFM2.5-1.2B-Thinking` | HuggingFace model ID |
 | `MACMINI_HOST` | `0.0.0.0` | Bind address |
 | `MACMINI_PORT` | `8081` | Agent port |
 | `MACMINI_LOG_FILE` | `data/macmini_agent.jsonl` | Log file path |
@@ -232,7 +232,7 @@ Full technical documentation is in `docs/Agent_Edge_AI_Futures_Lab.docx`, includ
 | Web Framework | FastAPI + Uvicorn |
 | Agent Communication | A2A Protocol (HTTP POST + WebSocket) |
 | Tool Integration | MCP (Model Context Protocol) |
-| LLM | [Liquid AI LFM 2.5 1.2B](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct) |
+| LLM | [Liquid AI LFM2.5-1.2B-Thinking](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct) |
 | Dashboard | Streamlit + Plotly |
 | Storage | JSON Lines (no database) |
 | Sensor | ENS160 + AHT21 (I2C) |
