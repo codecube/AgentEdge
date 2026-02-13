@@ -357,7 +357,7 @@ async def _send_a2a_query(question: str):
         )
         await send_message(config.JETSON_AGENT_URL, msg)
     except Exception as e:
-        logger.debug("A2A query send failed (non-critical): %s", e)
+        logger.warning("A2A query send to Jetson failed: %s", e)
 
 
 def _data_only_answer(question: str, current: dict | None, stats: dict) -> str:

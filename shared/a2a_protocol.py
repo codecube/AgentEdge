@@ -188,7 +188,7 @@ async def send_message(
                 resp = await client.post(f"{url}/a2a/message", json=payload)
                 resp.raise_for_status()
                 return resp.json()
-        except (httpx.HTTPError, httpx.ConnectError) as e:
+        except (httpx.HTTPError, httpx.ConnectError, httpx.TimeoutException) as e:
             if attempt == max_retries - 1:
                 raise
             delay = base_delay * (2**attempt)
