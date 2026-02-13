@@ -47,7 +47,7 @@ def render_chat_widget(macmini_url: str):
         if len(st.session_state.chat_history) > 40:
             st.session_state.chat_history = st.session_state.chat_history[-40:]
 
-        st.rerun()
+        st.rerun(scope="fragment")
 
 
 def _send_question(macmini_url: str, question: str) -> str:

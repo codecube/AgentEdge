@@ -80,27 +80,69 @@ async def _read_sensor_http(client: httpx.AsyncClient) -> dict | None:
         return None
 
 
-async def _stream_chat_http(client: httpx.AsyncClient, question: str) -> None:
-    """Stream a chat response from the agent's SSE endpoint."""
-    print(f"\n{CYAN}", end="", flush=True)
+async def _chat_a2a(client: httpx.AsyncClient, question: str) -> None:
+    """Send a chat question via A2A message/send and print the reply."""
+    import uuid
+
+    message_id = uuid.uuid4().hex
+    request_id = str(uuid.uuid4())
+
+    payload = {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": "message/send",
+        "params": {
+            "message": {
+                "role": "user",
+                "parts": [{"kind": "text", "text": question}],
+                "messageId": message_id,
+            }
+        },
+    }
+
+    print(f"\n{DIM}Thinking...{RESET}", end="", flush=True)
     try:
-        async with client.stream(
-            "POST",
-            f"{AGENT_BASE_URL}/api/chat/stream",
-            json={"question": question},
-            timeout=120.0,
-        ) as resp:
-            async for line in resp.aiter_lines():
-                if line.startswith("event: done"):
-                    break
-                if line.startswith("event: error"):
-                    continue
-                if line.startswith("data: "):
-                    token = json.loads(line[6:])
-                    print(token, end="", flush=True)
+        resp = await client.post(
+            AGENT_BASE_URL, json=payload, timeout=120.0
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+        # Extract agent reply from ADK response
+        reply = _extract_reply(data)
+        print(f"\r{CYAN}{reply}{RESET}\n")
+    except httpx.ConnectError:
+        print(f"\r{RED}Agent is not reachable.{RESET}\n")
+    except httpx.TimeoutException:
+        print(f"\r{RED}Request timed out — the agent may be busy.{RESET}\n")
     except Exception as e:
-        print(f"{RESET}\n{RED}Agent stream error: {e}{RESET}")
-    print(f"{RESET}\n")
+        print(f"\r{RED}Error: {e}{RESET}\n")
+
+
+def _extract_reply(response: dict) -> str:
+    """Extract agent text from an A2A JSON-RPC response."""
+    result = response.get("result", {})
+
+    # ADK format: last agent message in history
+    for msg in reversed(result.get("history", [])):
+        if msg.get("role") == "agent":
+            for part in msg.get("parts", []):
+                meta = part.get("metadata") or {}
+                if meta.get("adk_thought"):
+                    continue
+                if part.get("kind") == "text" and part.get("text", "").strip():
+                    return part["text"]
+
+    # Fallback: direct message
+    message = result.get("message")
+    if not message:
+        message = (result.get("status") or {}).get("message")
+    if message:
+        for part in message.get("parts", []):
+            if part.get("kind") == "text" and part.get("text", "").strip():
+                return part["text"]
+
+    return "No response from agent."
 
 
 async def _check_agent() -> bool:
@@ -190,8 +232,8 @@ async def main() -> None:
                 print(f"{RED}Unknown command:{RESET} {text}. Type /help for commands.")
                 continue
 
-            # ── Chat via agent HTTP API ────────────────────────────────
-            await _stream_chat_http(http_client, text)
+            # ── Chat via A2A message/send ─────────────────────────────
+            await _chat_a2a(http_client, text)
 
     finally:
         await http_client.aclose()
