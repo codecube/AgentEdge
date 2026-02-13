@@ -10,7 +10,7 @@ MCP_ARDUINO_SERVER = os.getenv(
 )
 MACMINI_AGENT_URL = os.getenv("MACMINI_AGENT_URL", "http://localhost:8081")
 LFM_MODEL = os.getenv("LFM_MODEL", "LiquidAI/LFM2.5-1.2B-Thinking")
-SERIAL_PORT = os.getenv("SERIAL_PORT", "/dev/ttyACM0")
+SERIAL_PORT = os.getenv("SERIAL_PORT", "/dev/ttyUSB0")
 SERIAL_BAUD = int(os.getenv("SERIAL_BAUD", "9600"))
 
 SENSOR_POLL_INTERVAL = int(os.getenv("SENSOR_POLL_INTERVAL", "10"))  # seconds

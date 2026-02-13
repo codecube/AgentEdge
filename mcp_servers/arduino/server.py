@@ -17,7 +17,7 @@ logging.basicConfig(
     format="%(asctime)s [MCP-Arduino] %(levelname)s: %(message)s",
 )
 
-SERIAL_PORT = os.getenv("SERIAL_PORT", "/dev/ttyACM0")
+SERIAL_PORT = os.getenv("SERIAL_PORT", "/dev/ttyUSB0")
 SERIAL_BAUD = int(os.getenv("SERIAL_BAUD", "9600"))
 SERIAL_TIMEOUT = 8  # seconds — must be > Arduino send interval (5s)
 

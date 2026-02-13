@@ -118,7 +118,7 @@ mkdir -p data
 
 # Configure environment
 export MACMINI_AGENT_URL=http://<macmini-ip>:8081
-export SERIAL_PORT=/dev/ttyACM0   # Arduino serial port
+export SERIAL_PORT=/dev/ttyUSB0   # Arduino serial port
 # export SERIAL_BAUD=9600         # Default, change if needed
 # export LFM_MODEL=LiquidAI/LFM2.5-1.2B-Thinking  # Default
 
@@ -205,7 +205,7 @@ This starts both agents and the dashboard. Press `Ctrl+C` to stop all components
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MACMINI_AGENT_URL` | `http://localhost:8081` | Mac Mini agent URL |
-| `SERIAL_PORT` | `/dev/ttyACM0` | Arduino serial port |
+| `SERIAL_PORT` | `/dev/ttyUSB0` | Arduino serial port |
 | `SERIAL_BAUD` | `9600` | Arduino baud rate |
 | `LFM_MODEL` | `LiquidAI/LFM2.5-1.2B-Thinking` | HuggingFace model ID |
 | `JETSON_HOST` | `0.0.0.0` | Bind address |

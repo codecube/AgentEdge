@@ -62,7 +62,7 @@ Any of these triggers LFM analysis:
 ## Ports
 - Jetson agent: 8080
 - Mac Mini agent: 8081
-- Arduino serial: /dev/ttyACM0 (Jetson), configurable
+- Arduino serial: /dev/ttyUSB0 (Jetson), configurable
 
 ## Dashboard
 Use the **frontend-design** skill when building dashboard components for distinctive, polished UI. The dashboard should be visually compelling for a technical audience demo.
