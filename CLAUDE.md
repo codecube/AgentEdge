@@ -10,7 +10,7 @@ Distributed AI agent system: two autonomous agents (Jetson Orin Nano + Mac Mini 
 
 ## Key Tech
 - **Python 3.10+**, FastAPI, WebSocket, asyncio
-- **LLM**: LiquidAI/LFM2.5-1.2B-Thinking via HuggingFace Transformers
+- **LLM**: LiquidAI/LFM2.5-1.2B-Thinking via Ollama (`lfm2.5-thinking`)
 - **Sensor**: ENS160 (eCO2, TVOC, AQI) + AHT21 (temp, humidity) over I2C
 - **Arduino**: ScioSense_ENS160 + Adafruit_AHTX0 libraries, JSON over serial at 9600 baud
 - **Protocols**: MCP (agent-to-system), A2A (agent-to-agent)

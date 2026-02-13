@@ -62,10 +62,15 @@ agent-edge/
 ## Prerequisites
 
 - **Python 3.10+** (3.9 works with `from __future__ import annotations`)
+- **Ollama** installed and running with `lfm2.5-thinking` pulled:
+  ```bash
+  ollama pull lfm2.5-thinking
+  ollama serve   # if not already running as a system service
+  ```
 - **Arduino** with ENS160+AHT21 module connected via USB
   - Arduino libraries: `ScioSense_ENS160`, `Adafruit_AHTX0`
-- **Jetson Orin Nano** (Site A) or any Linux machine with CUDA (optional)
-- **Mac Mini M2** (Control Center) or any machine with MPS/CPU
+- **Jetson Orin Nano** (Site A) or any Linux machine
+- **Mac Mini M2** (Control Center) or any machine
 
 For local development on a single machine, both agents can run side by side.
 
@@ -91,42 +96,28 @@ Wire the ENS160+AHT21 module to the Arduino's I2C pins (SDA/SCL) + VCC + GND. Th
 git clone https://github.com/codecube/AgentEdge.git
 cd AgentEdge
 
-# Create virtual environment (must be Python 3.10 on Jetson)
+# Create virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 
-# ⚠️  Install Jetson PyTorch FIRST — the standard pip wheel is CPU-only on aarch64.
-# This pulls the CUDA-enabled wheel from NVIDIA's Jetson AI Lab index.
-pip install -r agents/jetson/requirements-jetson.txt
-
-# Then install the rest
+# Install dependencies
 pip install -r agents/jetson/requirements.txt
 
 # Create data directory
 mkdir -p data
 
-# CUDA runtime libs — required for PyTorch to find libcublas, etc.
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+# Ensure Ollama is running with the LFM model
+ollama pull lfm2.5-thinking
 
 # Configure environment
 export MACMINI_AGENT_URL=http://<macmini-ip>:8081
 export SERIAL_PORT=/dev/ttyUSB0   # Arduino serial port
 # export SERIAL_BAUD=9600         # Default, change if needed
-# export LFM_MODEL=LiquidAI/LFM2.5-1.2B-Thinking  # Default
+# export OLLAMA_URL=http://localhost:11434  # Default
 
 # Run the agent
 python -m agents.jetson.agent
 ```
-
-> **PyTorch on Jetson**: Two things trip people up:
-> 1. The standard `pip install torch` gives a **CPU-only** build on aarch64. The `requirements-jetson.txt` pulls the CUDA wheel from [NVIDIA's Jetson AI Lab index](https://pypi.jetson-ai-lab.io/jp6/cu126) (CUDA 12.6, JetPack 6.x, **Python 3.10** required).
-> 2. Even with the right wheel, PyTorch can't find `libcublas.so` unless `LD_LIBRARY_PATH` includes `/usr/local/cuda/lib64`. Set it **before** launching the agent.
->
-> Verify both:
-> ```bash
-> export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-> python3 -c "import torch; print('CUDA:', torch.cuda.is_available())"  # Should print True
-> ```
 
 The Jetson agent will:
 - Connect to the Arduino via MCP server
@@ -166,9 +157,12 @@ pip install -r dashboard/requirements.txt
 # Create data directory
 mkdir -p data
 
+# Ensure Ollama is running with the LFM model
+ollama pull lfm2.5-thinking
+
 # Configure environment
 export JETSON_AGENT_URL=http://<jetson-ip>:8080
-# export LFM_MODEL=LiquidAI/LFM2.5-1.2B-Thinking  # Default
+# export OLLAMA_URL=http://localhost:11434  # Default
 
 # Run the agent
 python -m agents.macmini.agent
@@ -209,7 +203,8 @@ This starts both agents and the dashboard. Press `Ctrl+C` to stop all components
 | `MACMINI_AGENT_URL` | `http://localhost:8081` | Mac Mini agent URL |
 | `SERIAL_PORT` | `/dev/ttyUSB0` | Arduino serial port |
 | `SERIAL_BAUD` | `9600` | Arduino baud rate |
-| `LFM_MODEL` | `LiquidAI/LFM2.5-1.2B-Thinking` | HuggingFace model ID |
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
+| `LFM_MODEL` | `lfm2.5-thinking` | Ollama model name |
 | `JETSON_HOST` | `0.0.0.0` | Bind address |
 | `JETSON_PORT` | `8080` | Agent port |
 | `JETSON_LOG_FILE` | `data/jetson_agent.jsonl` | Log file path |
@@ -220,7 +215,8 @@ This starts both agents and the dashboard. Press `Ctrl+C` to stop all components
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `JETSON_AGENT_URL` | `http://localhost:8080` | Jetson agent URL |
-| `LFM_MODEL` | `LiquidAI/LFM2.5-1.2B-Thinking` | HuggingFace model ID |
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
+| `LFM_MODEL` | `lfm2.5-thinking` | Ollama model name |
 | `MACMINI_HOST` | `0.0.0.0` | Bind address |
 | `MACMINI_PORT` | `8081` | Agent port |
 | `MACMINI_LOG_FILE` | `data/macmini_agent.jsonl` | Log file path |
@@ -250,7 +246,7 @@ Full technical documentation is in `docs/Agent_Edge_AI_Futures_Lab.docx`, includ
 | Web Framework | FastAPI + Uvicorn |
 | Agent Communication | A2A Protocol (HTTP POST + WebSocket) |
 | Tool Integration | MCP (Model Context Protocol) |
-| LLM | [Liquid AI LFM2.5-1.2B-Thinking](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct) |
+| LLM | [Liquid AI LFM2.5-1.2B-Thinking](https://www.liquid.ai/models) via Ollama |
 | Dashboard | Streamlit + Plotly |
 | Storage | JSON Lines (no database) |
 | Sensor | ENS160 + AHT21 (I2C) |

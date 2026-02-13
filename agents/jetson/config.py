@@ -9,7 +9,8 @@ MCP_ARDUINO_SERVER = os.getenv(
     "MCP_ARDUINO_SERVER", "./mcp_servers/arduino/server.py"
 )
 MACMINI_AGENT_URL = os.getenv("MACMINI_AGENT_URL", "http://localhost:8081")
-LFM_MODEL = os.getenv("LFM_MODEL", "LiquidAI/LFM2.5-1.2B-Thinking")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+LFM_MODEL = os.getenv("LFM_MODEL", "lfm2.5-thinking")
 SERIAL_PORT = os.getenv("SERIAL_PORT", "/dev/ttyUSB0")
 SERIAL_BAUD = int(os.getenv("SERIAL_BAUD", "9600"))
 

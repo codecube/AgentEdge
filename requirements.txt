@@ -9,10 +9,6 @@ websockets>=12.0
 mcp>=1.0.0
 pyserial>=3.5
 
-# LFM / ML
-torch>=2.1.0
-transformers>=4.36.0
-
 # Dashboard
 streamlit>=1.29.0
 plotly>=5.18.0
