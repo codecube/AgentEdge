@@ -5,24 +5,29 @@ graph LR
         direction TB
         ARDUINO["Arduino<br/>ENS160+AHT21<br/><i>I2C / Serial</i>"]
         MCP["MCP Server<br/><i>read_sensor tool</i><br/><i>stdio transport</i>"]
-        JETSON["Jetson Agent<br/><i>Anomaly Detection</i><br/><i>LFM 2.5 (CUDA)</i>"]
+        JETSON["Jetson ADK Agent<br/><i>LlmAgent + Tools</i><br/><i>Ollama / LiteLLM</i>"]
+        SENSOR_LOOP["Sensor Loop<br/><i>Background Task</i>"]
         ARDUINO -->|"USB Serial"| MCP
-        MCP -->|"MCP Protocol"| JETSON
+        MCP -->|"MCP Protocol"| SENSOR_LOOP
+        SENSOR_LOOP --> JETSON
     end
 
-    subgraph CONTROL["CONTROL CENTER — Mac Mini M2"]
+    subgraph CONTROL["CONTROL CENTER — Mac"]
         direction TB
-        MACMINI["Mac Mini Agent<br/><i>Historical Stats</i><br/><i>LFM 2.5 (MPS)</i>"]
+        MAC["Mac ADK Agent<br/><i>LlmAgent + RemoteA2aAgent</i><br/><i>Ollama / LiteLLM</i>"]
         DASHBOARD["Streamlit Dashboard<br/><i>Real-time Viz</i><br/><i>:8501</i>"]
-        MACMINI --> DASHBOARD
+        MAC -->|"REST /api/*"| DASHBOARD
     end
 
-    JETSON <-->|"A2A Protocol<br/>HTTP + WebSocket"| MACMINI
+    SENSOR_LOOP -->|"REST push<br/>/api/sensor/push"| MAC
+    JETSON <-->|"A2A Protocol<br/>JSON-RPC + agent-card"| MAC
+    DASHBOARD -->|"A2A message/send<br/>JSON-RPC"| MAC
 
     style ARDUINO fill:#1a2438,stroke:#00f0ff,stroke-width:2px,color:#e2e8f0
     style MCP fill:#1a2438,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
+    style SENSOR_LOOP fill:#1a2438,stroke:#00f0ff,stroke-width:1px,color:#94a3b8
     style JETSON fill:#151d2e,stroke:#00f0ff,stroke-width:2px,color:#e2e8f0
-    style MACMINI fill:#151d2e,stroke:#ffaa00,stroke-width:2px,color:#e2e8f0
+    style MAC fill:#151d2e,stroke:#ffaa00,stroke-width:2px,color:#e2e8f0
     style DASHBOARD fill:#1a2438,stroke:#a78bfa,stroke-width:2px,color:#e2e8f0
     style SITE_A fill:#0a0e17,stroke:#00f0ff,stroke-width:1px,color:#00f0ff
     style CONTROL fill:#0a0e17,stroke:#ffaa00,stroke-width:1px,color:#ffaa00

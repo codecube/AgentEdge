@@ -5,30 +5,35 @@ graph TB
         direction TB
         ARDUINO["🔌 Arduino Uno<br/><i>ENS160+AHT21</i><br/><code>temp | humidity | eCO2 | TVOC | AQI</code>"]
         MCP_SERVER["⚙️ MCP Arduino Server<br/><i>read_sensor tool</i><br/><code>stdio transport</code>"]
-        JETSON["🤖 Jetson Agent<br/><i>Anomaly Detection</i><br/><code>FastAPI :8080</code>"]
-        LFM_J["🧠 LFM2.5-1.2B-Thinking<br/><i>CUDA inference</i>"]
+        SENSOR_LOOP["🔄 Sensor Loop<br/><i>Background asyncio task</i><br/><code>every 10s</code>"]
+        JETSON["🤖 Jetson ADK Agent<br/><i>LlmAgent + detect_anomalies</i><br/><code>to_a2a() + FastAPI :8080</code>"]
+        OLLAMA_J["🧠 Ollama → LFM2.5-Thinking<br/><i>LiteLLM integration</i>"]
     end
 
-    subgraph CONTROL["<b>CONTROL CENTER — Mac Mini M2</b>"]
+    subgraph CONTROL["<b>CONTROL CENTER — Mac</b>"]
         direction TB
-        MACMINI["🤖 Mac Mini Agent<br/><i>Historical Analysis</i><br/><code>FastAPI :8081</code>"]
-        LFM_M["🧠 LFM2.5-1.2B-Thinking<br/><i>MPS inference</i>"]
+        MAC["🤖 Mac ADK Agent<br/><i>LlmAgent + RemoteA2aAgent</i><br/><code>to_a2a() + FastAPI :8081</code>"]
+        OLLAMA_M["🧠 Ollama → LFM2.5-Thinking<br/><i>LiteLLM integration</i>"]
         DASHBOARD["📊 Streamlit Dashboard<br/><i>Real-time Visualization</i><br/><code>:8501</code>"]
     end
 
     ARDUINO -->|"USB Serial<br/>JSON @ 9600 baud"| MCP_SERVER
-    MCP_SERVER -->|"MCP Protocol<br/>stdio"| JETSON
-    JETSON -->|"LFM Analysis"| LFM_J
-    JETSON <-->|"<b>A2A Protocol</b><br/>HTTP POST + WebSocket"| MACMINI
-    MACMINI -->|"LFM Analysis"| LFM_M
-    MACMINI -->|"WebSocket<br/>+ REST API"| DASHBOARD
+    MCP_SERVER -->|"MCP Protocol<br/>stdio"| SENSOR_LOOP
+    SENSOR_LOOP --> JETSON
+    JETSON -->|"LiteLLM → Ollama"| OLLAMA_J
+    SENSOR_LOOP -->|"REST push<br/>POST /api/sensor/push"| MAC
+    JETSON <-->|"<b>A2A Protocol</b><br/>JSON-RPC + /.well-known/agent-card.json"| MAC
+    MAC -->|"LiteLLM → Ollama"| OLLAMA_M
+    MAC -->|"REST /api/*<br/>+ WebSocket /stream"| DASHBOARD
+    DASHBOARD -->|"A2A message/send<br/>JSON-RPC"| MAC
 
     style ARDUINO fill:#1a2438,stroke:#00f0ff,stroke-width:2px,color:#e2e8f0
     style MCP_SERVER fill:#1a2438,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
+    style SENSOR_LOOP fill:#1a2438,stroke:#00f0ff,stroke-width:1px,color:#94a3b8
     style JETSON fill:#151d2e,stroke:#00f0ff,stroke-width:2px,color:#e2e8f0
-    style MACMINI fill:#151d2e,stroke:#ffaa00,stroke-width:2px,color:#e2e8f0
+    style MAC fill:#151d2e,stroke:#ffaa00,stroke-width:2px,color:#e2e8f0
     style DASHBOARD fill:#1a2438,stroke:#a78bfa,stroke-width:2px,color:#e2e8f0
-    style LFM_J fill:#111827,stroke:#475569,stroke-width:1px,color:#94a3b8
-    style LFM_M fill:#111827,stroke:#475569,stroke-width:1px,color:#94a3b8
+    style OLLAMA_J fill:#111827,stroke:#475569,stroke-width:1px,color:#94a3b8
+    style OLLAMA_M fill:#111827,stroke:#475569,stroke-width:1px,color:#94a3b8
     style SITE_A fill:#0a0e17,stroke:#00f0ff,stroke-width:1px,color:#00f0ff
     style CONTROL fill:#0a0e17,stroke:#ffaa00,stroke-width:1px,color:#ffaa00

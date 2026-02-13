@@ -15,7 +15,30 @@ Agent Edge is a working demonstration built for [Capgemini's AI Futures Lab](htt
 
 ## Architecture
 
-![Architecture](docs/diagrams/readme_architecture.png)
+```mermaid
+graph LR
+    subgraph SITE_A["SITE A — Jetson Orin Nano"]
+        direction TB
+        ARDUINO["Arduino\nENS160+AHT21\nI2C / Serial"]
+        MCP["MCP Server\nread_sensor tool\nstdio transport"]
+        SENSOR_LOOP["Sensor Loop\nBackground Task"]
+        JETSON["Jetson ADK Agent\nLlmAgent + Tools\nOllama / LiteLLM"]
+        ARDUINO -->|"USB Serial"| MCP
+        MCP -->|"MCP Protocol"| SENSOR_LOOP
+        SENSOR_LOOP --> JETSON
+    end
+
+    subgraph CONTROL["CONTROL CENTER — Mac"]
+        direction TB
+        MAC["Mac ADK Agent\nLlmAgent + RemoteA2aAgent\nOllama / LiteLLM"]
+        DASHBOARD["Streamlit Dashboard\nReal-time Viz\n:8501"]
+        MAC -->|"REST /api/*"| DASHBOARD
+    end
+
+    SENSOR_LOOP -->|"REST push\n/api/sensor/push"| MAC
+    JETSON <-->|"A2A Protocol\nJSON-RPC + agent-card"| MAC
+    DASHBOARD -->|"A2A message/send\nJSON-RPC"| MAC
+```
 
 ## Sensor Data
 

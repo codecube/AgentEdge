@@ -5,18 +5,19 @@ sequenceDiagram
 
     participant ARD as Arduino<br/>ENS160+AHT21
     participant MCP as MCP Server
-    participant JET as Jetson Agent
-    participant LFM_J as LFM (Jetson)
-    participant MAC as Mac Mini Agent
-    participant LFM_M as LFM (Mac Mini)
+    participant LOOP as Sensor Loop
+    participant JET as Jetson ADK Agent
+    participant LFM_J as Ollama/LFM (Jetson)
+    participant MAC as Mac ADK Agent
+    participant LFM_M as Ollama/LFM (Mac)
     participant DASH as Dashboard
 
     rect rgb(17, 24, 39)
-        Note over ARD,DASH: Normal Operation (every 5s)
+        Note over ARD,DASH: Normal Operation (every 10s)
         ARD->>MCP: {"temp":24.5,"humidity":65.2,"eco2":450,"tvoc":120,"aqi":1}
-        MCP->>JET: read_sensor → sensor data + timestamp
-        JET->>JET: Anomaly check: all thresholds OK
-        JET->>MAC: A2A: sensor_observation
+        MCP->>LOOP: read_sensor → sensor data + timestamp
+        LOOP->>LOOP: detect_anomalies: all thresholds OK
+        LOOP->>MAC: REST POST /api/sensor/push
         MAC->>MAC: Store + update history
         MAC-->>DASH: WebSocket: sensor data
     end
@@ -24,20 +25,22 @@ sequenceDiagram
     rect rgb(30, 15, 15)
         Note over ARD,DASH: Anomaly Detected! (eCO2 > 1000ppm)
         ARD->>MCP: {"temp":24.8,"humidity":66.0,"eco2":1200,"tvoc":380,"aqi":3}
-        MCP->>JET: read_sensor → sensor data + timestamp
-        JET->>JET: ANOMALY: eCO2 1200ppm > 1000 threshold
+        MCP->>LOOP: read_sensor → sensor data + timestamp
+        LOOP->>LOOP: ANOMALY: eCO2 1200ppm > 1000 threshold
 
-        JET->>LFM_J: Analyze anomaly with sensor context
-        LFM_J-->>JET: "CO2 spike while temp stable suggests poor ventilation"
-        JET-->>DASH: WebSocket: anomaly + LFM thinking
+        LOOP->>MAC: REST POST /api/sensor/push (with anomaly)
+        LOOP-->>DASH: WebSocket: anomaly_detected
 
-        JET->>MAC: A2A: analysis_request (anomaly + LFM reasoning)
-        MAC->>MAC: Query historical stats (24h window)
-        MAC->>LFM_M: Analyze with historical context
+        Note over DASH,MAC: User asks about the anomaly via chat
+        DASH->>MAC: A2A message/send (JSON-RPC)
+        MAC->>MAC: LlmAgent: query historical stats via tools
+        MAC->>LFM_M: LiteLLM → Ollama: analyze with context
         LFM_M-->>MAC: "eCO2 is 2.1σ above mean. Recommend ventilation check"
-        MAC->>JET: A2A: analysis_response (confidence: 0.8)
-        MAC-->>DASH: WebSocket: analysis + LFM thinking
 
-        JET->>JET: Log collaborative decision
-        JET-->>DASH: WebSocket: decision summary
+        MAC->>JET: RemoteA2aAgent → A2A JSON-RPC (delegate for live reading)
+        JET->>LFM_J: LiteLLM → Ollama: analyze anomaly
+        LFM_J-->>JET: "CO2 spike while temp stable suggests poor ventilation"
+        JET-->>MAC: A2A response with Jetson analysis
+
+        MAC-->>DASH: A2A response: combined analysis
     end
