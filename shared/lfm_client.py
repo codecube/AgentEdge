@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import logging
 from typing import AsyncGenerator
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +43,28 @@ class LFMClient:
             if "Lfm2" not in str(e):
                 raise
             # Some transformers versions ship a stub lfm2 module that shadows
-            # the remote code.  Clear the broken local mapping and retry so
-            # AutoModel falls back to the model repo's custom class.
-            logger.warning("Local lfm2 module incomplete, retrying with remote code")
-            from transformers import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
-            MODEL_FOR_CAUSAL_LM_MAPPING_NAMES.pop("lfm2", None)
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_name, **load_kwargs,
+            # the remote code.  Bypass AutoModelForCausalLM entirely and load
+            # the model class directly from the HuggingFace repo.
+            logger.warning("Local lfm2 module incomplete, loading from HF repo")
+            config = AutoConfig.from_pretrained(
+                model_name, trust_remote_code=True,
+            )
+            auto_map = getattr(config, "auto_map", {})
+            class_ref = auto_map.get("AutoModelForCausalLM", "")
+            if not class_ref:
+                raise RuntimeError(
+                    "Cannot load LFM: no AutoModelForCausalLM in repo auto_map. "
+                    "Try: pip install -U transformers"
+                ) from e
+            mod_name, cls_name = class_ref.rsplit(".", 1)
+            package = type(config).__module__.rsplit(".", 1)[0]
+            modeling = importlib.import_module(f"{package}.{mod_name}")
+            model_cls = getattr(modeling, cls_name)
+            self.model = model_cls.from_pretrained(
+                model_name,
+                config=config,
+                device_map=load_kwargs.get("device_map"),
+                dtype=load_kwargs.get("dtype"),
             )
         if self.device == "mps":
             self.model = self.model.to("mps")
