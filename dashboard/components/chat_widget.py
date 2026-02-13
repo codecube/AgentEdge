@@ -53,7 +53,30 @@ def render_chat_widget(macmini_url: str):
 def _send_question(macmini_url: str, question: str) -> str:
     """Send question via A2A message/send and return the agent's reply."""
     response = send_a2a_message(macmini_url, question, timeout=30.0)
-    return extract_agent_reply(response)
+    reply = extract_agent_reply(response)
+
+    # Record the exchange in the Mac's A2A message log so the
+    # conversation panel shows it.
+    _record_message(macmini_url, question, reply)
+
+    return reply
+
+
+def _record_message(macmini_url: str, question: str, answer: str):
+    """POST the chat exchange to the Mac so it appears in the A2A panel."""
+    from datetime import datetime, timezone
+
+    import httpx
+
+    ts = datetime.now(timezone.utc).isoformat()
+    try:
+        httpx.post(
+            f"{macmini_url}/api/record-message",
+            json={"question": question, "answer": answer, "timestamp": ts},
+            timeout=3.0,
+        )
+    except Exception:
+        pass
 
 
 def _render_user_message(content: str):

@@ -77,12 +77,57 @@ async def sensor_push(reading: dict):
     reading.setdefault("timestamp", "")
     state.sensor_history.append(reading)
 
+    # Mark Jetson as alive
+    state.peer_last_seen = time.time()
+    if not state.peer_card:
+        state.peer_card = {
+            "agent_id": "jetson-site-a",
+            "capabilities": ["sensor_reading", "anomaly_detection"],
+            "model": "LiquidAI/LFM2.5-1.2B-Thinking",
+            "status": "active",
+        }
+
     # Trim history
     cutoff_count = int(config.HISTORICAL_WINDOW_HOURS * 3600 / 5)
     if len(state.sensor_history) > cutoff_count:
         state.sensor_history[:] = state.sensor_history[-cutoff_count:]
 
     await state.broadcast_ws({"event": "sensor_observation", "data": reading})
+    return {"status": "ok"}
+
+
+@router.post("/anomaly/push")
+async def anomaly_push(event: dict):
+    """Receive an anomaly event pushed from the Jetson sensor loop."""
+    state.record_reasoning_event(event)
+    await state.broadcast_ws({"event": "reasoning", "data": event})
+    return {"status": "ok"}
+
+
+@router.post("/record-message")
+async def record_message(payload: dict):
+    """Record an A2A chat exchange from the dashboard."""
+    ts = payload.get("timestamp", "")
+    state.record_a2a_message(
+        "query",
+        {
+            "type": "query",
+            "from": "dashboard",
+            "to": config.AGENT_ID,
+            "timestamp": ts,
+            "payload": {"question": payload.get("question", "")},
+        },
+    )
+    state.record_a2a_message(
+        "query_response",
+        {
+            "type": "query_response",
+            "from": config.AGENT_ID,
+            "to": "dashboard",
+            "timestamp": ts,
+            "payload": {"answer": payload.get("answer", "")},
+        },
+    )
     return {"status": "ok"}
 
 

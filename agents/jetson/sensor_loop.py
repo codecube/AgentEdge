@@ -64,13 +64,12 @@ async def sensor_loop() -> None:
             )
             if result["is_anomaly"]:
                 logger.warning("Anomaly detected: %s", result["reasons"])
-                storage.append(
-                    {
-                        "event": "anomaly_detected",
-                        "reasons": result["reasons"],
-                        **reading,
-                    }
-                )
+                anomaly_event = {
+                    "event": "anomaly_detected",
+                    "reasons": result["reasons"],
+                    **reading,
+                }
+                storage.append(anomaly_event)
                 await state.broadcast_ws(
                     {
                         "event": "anomaly_detected",
@@ -78,6 +77,8 @@ async def sensor_loop() -> None:
                         "reading": reading,
                     }
                 )
+                # Push anomaly to Mac for dashboard reasoning panel
+                await _push_anomaly_to_macmini(anomaly_event)
 
             # Update shared state
             state.previous_reading = reading
@@ -105,3 +106,15 @@ async def _push_to_macmini(reading: dict) -> None:
             )
     except Exception as e:
         logger.warning("Failed to push reading to Mac: %s", e)
+
+
+async def _push_anomaly_to_macmini(event: dict) -> None:
+    """Push an anomaly event to the Mac's reasoning panel."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(
+                f"{config.MACMINI_AGENT_URL}/api/anomaly/push",
+                json=event,
+            )
+    except Exception as e:
+        logger.warning("Failed to push anomaly to Mac: %s", e)
