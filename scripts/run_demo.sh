@@ -5,6 +5,9 @@ set -e
 
 echo "=== Agent Edge - Demo Launcher ==="
 
+# CUDA runtime libs for Jetson (no-op on Mac/x86 — the path just won't exist)
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+
 # Ensure virtual environment
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."

@@ -105,6 +105,9 @@ pip install -r agents/jetson/requirements.txt
 # Create data directory
 mkdir -p data
 
+# CUDA runtime libs — required for PyTorch to find libcublas, etc.
+export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+
 # Configure environment
 export MACMINI_AGENT_URL=http://<macmini-ip>:8081
 export SERIAL_PORT=/dev/ttyUSB0   # Arduino serial port
@@ -115,9 +118,14 @@ export SERIAL_PORT=/dev/ttyUSB0   # Arduino serial port
 python -m agents.jetson.agent
 ```
 
-> **PyTorch on Jetson**: The standard `pip install torch` gives you a CPU-only build on aarch64. Without the Jetson-specific wheel, `torch.cuda.is_available()` returns `False` and LFM runs on CPU (~1 tok/s). The `requirements-jetson.txt` file pulls from [NVIDIA's Jetson AI Lab index](https://pypi.jetson-ai-lab.io/jp6/cu126) which provides wheels compiled with CUDA 12.6 for JetPack 6.x. Requires **Python 3.10**. Verify after install:
+> **PyTorch on Jetson**: Two things trip people up:
+> 1. The standard `pip install torch` gives a **CPU-only** build on aarch64. The `requirements-jetson.txt` pulls the CUDA wheel from [NVIDIA's Jetson AI Lab index](https://pypi.jetson-ai-lab.io/jp6/cu126) (CUDA 12.6, JetPack 6.x, **Python 3.10** required).
+> 2. Even with the right wheel, PyTorch can't find `libcublas.so` unless `LD_LIBRARY_PATH` includes `/usr/local/cuda/lib64`. Set it **before** launching the agent.
+>
+> Verify both:
 > ```bash
-> python3 -c "import torch; print(torch.cuda.is_available())"  # Should print True
+> export LD_LIBRARY_PATH=/usr/local/cuda/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+> python3 -c "import torch; print('CUDA:', torch.cuda.is_available())"  # Should print True
 > ```
 
 The Jetson agent will:
