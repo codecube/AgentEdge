@@ -29,12 +29,27 @@ class LFMClient:
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_name, trust_remote_code=True,
         )
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
+        load_kwargs = dict(
             trust_remote_code=True,
             device_map="auto" if self.device == "cuda" else None,
             dtype=torch.float16 if self.device != "cpu" else torch.float32,
         )
+        try:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name, **load_kwargs,
+            )
+        except ValueError as e:
+            if "Lfm2" not in str(e):
+                raise
+            # Some transformers versions ship a stub lfm2 module that shadows
+            # the remote code.  Clear the broken local mapping and retry so
+            # AutoModel falls back to the model repo's custom class.
+            logger.warning("Local lfm2 module incomplete, retrying with remote code")
+            from transformers import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
+            MODEL_FOR_CAUSAL_LM_MAPPING_NAMES.pop("lfm2", None)
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name, **load_kwargs,
+            )
         if self.device == "mps":
             self.model = self.model.to("mps")
 
