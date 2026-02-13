@@ -107,9 +107,7 @@ async def _check_agent() -> bool:
     """Check if the Jetson agent server is reachable."""
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
-            resp = await client.get(
-                f"{AGENT_BASE_URL}/.well-known/agent-card.json"
-            )
+            resp = await client.get(f"{AGENT_BASE_URL}/api/sensor/current")
             return resp.status_code == 200
     except Exception:
         return False

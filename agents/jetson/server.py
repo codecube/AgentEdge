@@ -15,8 +15,8 @@ from agents.jetson import config
 from agents.jetson.agent_def import root_agent
 from agents.jetson.dashboard_routes import router as dashboard_router
 from agents.jetson.sensor_loop import sensor_loop
-from google.adk.a2a.utils.agent_to_a2a import to_a2a
 from shared import state
+from shared.a2a_setup import setup_a2a_routes
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -31,6 +31,11 @@ async def lifespan(app: FastAPI):
     logger.info(
         "Starting Jetson Agent: %s on port %d", config.AGENT_ID, config.AGENT_PORT
     )
+
+    # Wire A2A JSON-RPC + agent card routes into this FastAPI app
+    await setup_a2a_routes(app, root_agent, config.AGENT_PORT)
+    logger.info("A2A routes registered")
+
     task = asyncio.create_task(sensor_loop())
     yield
     task.cancel()
@@ -59,12 +64,6 @@ async def stream(ws: WebSocket):
         logger.info(
             "WebSocket client disconnected (%d total)", len(state.ws_clients)
         )
-
-
-# Mount A2A Starlette app as catch-all — serves /.well-known/agent-card.json
-# and the JSON-RPC endpoint at POST /
-a2a_app = to_a2a(root_agent, port=config.AGENT_PORT)
-app.mount("/", a2a_app)
 
 
 if __name__ == "__main__":

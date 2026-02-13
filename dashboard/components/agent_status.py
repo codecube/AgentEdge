@@ -40,7 +40,7 @@ def _render_agent_card(name: str, role: str, status: dict | None, accent: str):
         status.get("agent_id") or status.get("name", "—") if status else "—"
     )
     model = status.get("model", "—") if status else "—"
-    caps_list = status.get("capabilities") or status.get("skills") or []
+    caps_list = (status.get("capabilities") or status.get("skills") or []) if status else []
     if isinstance(caps_list, list) and caps_list and isinstance(caps_list[0], dict):
         caps = ", ".join(s.get("name", "") for s in caps_list)
     elif isinstance(caps_list, list):

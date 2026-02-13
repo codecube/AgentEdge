@@ -7,7 +7,6 @@ and tracks Jetson liveness via the sensor push endpoint.
 from __future__ import annotations
 
 import logging
-import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -15,8 +14,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from agents.macmini import config
 from agents.macmini.agent_def import root_agent
 from agents.macmini.dashboard_routes import router as dashboard_router
-from google.adk.a2a.utils.agent_to_a2a import to_a2a
 from shared import state
+from shared.a2a_setup import setup_a2a_routes
 from shared.storage import JSONLinesStorage
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load historical data on startup."""
+    """Load historical data and wire A2A routes on startup."""
     logger.info(
         "Starting Mac Agent: %s on port %d",
         config.AGENT_ID,
@@ -42,6 +41,10 @@ async def lifespan(app: FastAPI):
         if record.get("event") == "sensor_observation":
             state.sensor_history.append(record)
     logger.info("Loaded %d historical readings", len(state.sensor_history))
+
+    # Wire A2A JSON-RPC + agent card routes into this FastAPI app
+    await setup_a2a_routes(app, root_agent, config.AGENT_PORT)
+    logger.info("A2A routes registered")
 
     yield
 
@@ -70,11 +73,6 @@ async def stream(ws: WebSocket):
         logger.info(
             "WebSocket client disconnected (%d total)", len(state.ws_clients)
         )
-
-
-# Mount A2A Starlette app as catch-all
-a2a_app = to_a2a(root_agent, port=config.AGENT_PORT)
-app.mount("/", a2a_app)
 
 
 if __name__ == "__main__":

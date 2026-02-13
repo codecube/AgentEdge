@@ -53,28 +53,45 @@ def send_a2a_message(agent_url: str, text: str, timeout: float = 30.0) -> dict:
 def extract_agent_reply(response: dict) -> str:
     """Extract the agent's text reply from a JSON-RPC response.
 
-    Handles both ``result.message.parts`` (direct response) and
-    ``result.status.message.parts`` (task-based response).
+    Google ADK returns agent messages in ``result.history`` (list of
+    messages with role/parts).  Also handles ``result.message`` and
+    ``result.status.message`` for other A2A implementations.
     """
     if "error" in response:
         return response["error"]
 
     result = response.get("result", {})
 
-    # Direct message response
+    # --- ADK format: last agent message in history ---
+    history = result.get("history", [])
+    for msg in reversed(history):
+        if msg.get("role") == "agent":
+            texts = _extract_text_parts(msg.get("parts", []))
+            if texts:
+                return "\n".join(texts)
+
+    # --- Direct message response ---
     message = result.get("message")
     if not message:
         # Task-based response
         message = (result.get("status") or {}).get("message")
-    if not message:
-        return "No response from agent."
+    if message:
+        texts = _extract_text_parts(message.get("parts", []))
+        if texts:
+            return "\n".join(texts)
 
-    parts = message.get("parts", [])
+    return "No response from agent."
+
+
+def _extract_text_parts(parts: list) -> list[str]:
+    """Pull text strings from a list of A2A message parts."""
     texts = []
     for part in parts:
         if part.get("kind") == "text" or part.get("type") == "text":
-            texts.append(part.get("text", ""))
-    return "\n".join(texts) if texts else "No text in response."
+            text = part.get("text", "")
+            if text:
+                texts.append(text)
+    return texts
 
 
 def fetch_agent_card(agent_url: str) -> dict | None:
