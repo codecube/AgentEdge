@@ -6,7 +6,13 @@ Run: streamlit run dashboard/app.py
 from __future__ import annotations
 
 import json
+import sys
 import time
+from pathlib import Path
+
+# Ensure project root is on sys.path so absolute imports work when
+# Streamlit runs this file as a standalone script.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import httpx
 import streamlit as st
