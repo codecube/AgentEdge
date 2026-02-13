@@ -91,9 +91,15 @@ Wire the ENS160+AHT21 module to the Arduino's I2C pins (SDA/SCL) + VCC + GND. Th
 git clone https://github.com/codecube/AgentEdge.git
 cd AgentEdge
 
-# Create virtual environment and install dependencies
+# Create virtual environment (must be Python 3.10 on Jetson)
 python3 -m venv .venv
 source .venv/bin/activate
+
+# ⚠️  Install Jetson PyTorch FIRST — the standard pip wheel is CPU-only on aarch64.
+# This pulls the CUDA-enabled wheel from NVIDIA's Jetson AI Lab index.
+pip install -r agents/jetson/requirements-jetson.txt
+
+# Then install the rest
 pip install -r agents/jetson/requirements.txt
 
 # Create data directory
@@ -108,6 +114,11 @@ export SERIAL_PORT=/dev/ttyUSB0   # Arduino serial port
 # Run the agent
 python -m agents.jetson.agent
 ```
+
+> **PyTorch on Jetson**: The standard `pip install torch` gives you a CPU-only build on aarch64. Without the Jetson-specific wheel, `torch.cuda.is_available()` returns `False` and LFM runs on CPU (~1 tok/s). The `requirements-jetson.txt` file pulls from [NVIDIA's Jetson AI Lab index](https://pypi.jetson-ai-lab.io/jp6/cu126) which provides wheels compiled with CUDA 12.6 for JetPack 6.x. Requires **Python 3.10**. Verify after install:
+> ```bash
+> python3 -c "import torch; print(torch.cuda.is_available())"  # Should print True
+> ```
 
 The Jetson agent will:
 - Connect to the Arduino via MCP server

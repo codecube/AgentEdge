@@ -5,5 +5,8 @@ pydantic>=2.5.0
 websockets>=12.0
 mcp>=1.0.0
 pyserial>=3.5
-torch>=2.1.0
 transformers>=4.36.0
+
+# PyTorch — install BEFORE this file on Jetson (see requirements-jetson.txt)
+# On non-Jetson machines (x86_64 / Mac) the standard pip wheel works:
+torch>=2.1.0
