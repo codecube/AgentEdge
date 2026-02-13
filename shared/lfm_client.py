@@ -26,11 +26,14 @@ class LFMClient:
             self.device = "cpu"
         logger.info("Using device: %s", self.device)
 
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_name, trust_remote_code=True,
+        )
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
+            trust_remote_code=True,
             device_map="auto" if self.device == "cuda" else None,
-            torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
+            dtype=torch.float16 if self.device != "cpu" else torch.float32,
         )
         if self.device == "mps":
             self.model = self.model.to("mps")
