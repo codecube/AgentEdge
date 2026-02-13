@@ -10,8 +10,13 @@ import streamlit as st
 from dashboard.a2a_client import extract_agent_reply, send_a2a_message
 
 
+@st.fragment
 def render_chat_widget(macmini_url: str):
-    """Render the chat widget inside st.sidebar."""
+    """Render the chat widget inside st.sidebar.
+
+    Decorated with ``@st.fragment`` so the long-running LLM call is not
+    interrupted by the 2-second ``st_autorefresh`` on the main page.
+    """
     st.markdown(
         '<div class="section-header">Agent Chat</div>',
         unsafe_allow_html=True,
