@@ -84,9 +84,17 @@ def extract_agent_reply(response: dict) -> str:
 
 
 def _extract_text_parts(parts: list) -> list[str]:
-    """Pull text strings from a list of A2A message parts."""
+    """Pull text strings from a list of A2A message parts.
+
+    Skips internal thinking tokens (``adk_thought``) so only the
+    agent's actual reply is returned.
+    """
     texts = []
     for part in parts:
+        # Skip ADK internal thinking tokens
+        meta = part.get("metadata") or {}
+        if meta.get("adk_thought"):
+            continue
         if part.get("kind") == "text" or part.get("type") == "text":
             text = part.get("text", "")
             if text:
