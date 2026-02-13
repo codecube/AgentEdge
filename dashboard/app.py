@@ -5,10 +5,8 @@ Run: streamlit run dashboard/app.py
 """
 from __future__ import annotations
 
-import json
 import os
 import sys
-import time
 from pathlib import Path
 
 # Ensure project root is on sys.path so absolute imports work when
@@ -45,31 +43,65 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 # --- Config ---
-JETSON_URL = os.getenv("JETSON_AGENT_URL", "http://localhost:8080")
 MACMINI_URL = os.getenv("MACMINI_AGENT_URL", "http://localhost:8081")
-REFRESH_INTERVAL = 1  # seconds
+REFRESH_SECONDS = 2
 
 
-def fetch_agent_status(url: str) -> dict | None:
-    """Fetch agent health status."""
+def fetch_all_data() -> dict:
+    """Fetch all dashboard data from Mac Mini in one pass.
+
+    The dashboard talks ONLY to the Mac Mini agent.  The Mac Mini tracks
+    Jetson availability via heartbeats so the dashboard never needs to
+    reach the Jetson directly (which it can't across the network).
+    """
+    result: dict = {
+        "jetson_status": None,
+        "macmini_status": None,
+        "sensor_readings": [],
+        "messages": [],
+        "reasoning": [],
+    }
+
     try:
-        resp = httpx.get(f"{url}/health", timeout=2.0)
-        if resp.status_code == 200:
-            return resp.json()
-    except Exception:
-        pass
-    return None
+        with httpx.Client(base_url=MACMINI_URL, timeout=3.0) as client:
+            # Agent statuses (Mac Mini proxies Jetson status)
+            try:
+                resp = client.get("/api/agents")
+                if resp.status_code == 200:
+                    agents = resp.json()
+                    result["jetson_status"] = agents.get("jetson")
+                    result["macmini_status"] = agents.get("macmini")
+            except Exception:
+                pass
 
+            # Sensor history
+            try:
+                resp = client.get("/api/history?limit=60")
+                if resp.status_code == 200:
+                    result["sensor_readings"] = resp.json()
+            except Exception:
+                pass
 
-def fetch_sensor_history() -> list[dict]:
-    """Fetch recent sensor readings from Mac Mini."""
-    try:
-        resp = httpx.get(f"{MACMINI_URL}/api/history?limit=60", timeout=2.0)
-        if resp.status_code == 200:
-            return resp.json()
+            # A2A messages
+            try:
+                resp = client.get("/api/messages?limit=50")
+                if resp.status_code == 200:
+                    result["messages"] = resp.json()
+            except Exception:
+                pass
+
+            # Reasoning events
+            try:
+                resp = client.get("/api/reasoning")
+                if resp.status_code == 200:
+                    result["reasoning"] = resp.json()
+            except Exception:
+                pass
     except Exception:
+        # Mac Mini completely unreachable — everything stays at defaults
         pass
-    return []
+
+    return result
 
 
 # --- Header ---
@@ -86,12 +118,15 @@ header_html = """
 """
 st.markdown(header_html, unsafe_allow_html=True)
 
-# --- Fetch Data ---
-jetson_status = fetch_agent_status(JETSON_URL)
-macmini_status = fetch_agent_status(MACMINI_URL)
-sensor_readings = fetch_sensor_history()
-if sensor_readings:
-    st.session_state.sensor_readings = sensor_readings
+# --- Fetch Data (single pass to Mac Mini only) ---
+data = fetch_all_data()
+
+if data["sensor_readings"]:
+    st.session_state.sensor_readings = data["sensor_readings"]
+if data["messages"]:
+    st.session_state.messages = data["messages"]
+if data["reasoning"]:
+    st.session_state.reasoning_events = data["reasoning"]
 
 # --- Layout ---
 
@@ -99,7 +134,7 @@ if sensor_readings:
 top_left, top_right = st.columns([1, 3])
 
 with top_left:
-    render_agent_status(jetson_status, macmini_status)
+    render_agent_status(data["jetson_status"], data["macmini_status"])
 
 with top_right:
     render_sensor_charts(st.session_state.sensor_readings)
@@ -131,6 +166,15 @@ footer_html = """
 """
 st.markdown(footer_html, unsafe_allow_html=True)
 
-# --- Auto-refresh ---
-time.sleep(REFRESH_INTERVAL)
-st.rerun()
+# --- Auto-refresh (non-blocking) ---
+import time as _time
+
+if "last_refresh" not in st.session_state:
+    st.session_state.last_refresh = 0.0
+
+_now = _time.time()
+_elapsed = _now - st.session_state.last_refresh
+if _elapsed >= REFRESH_SECONDS:
+    st.session_state.last_refresh = _now
+    _time.sleep(0.05)  # tiny yield so Streamlit processes pending interactions
+    st.rerun()

@@ -28,17 +28,17 @@ def render_chat_widget(macmini_url: str):
     if question:
         # Add user message
         st.session_state.chat_history.append({"role": "user", "content": question})
-        _render_user_message(question)
 
         # Call Mac Mini /api/chat
         answer = _send_question(macmini_url, question)
         st.session_state.chat_history.append({"role": "agent", "content": answer})
-        _render_agent_message(answer)
 
         # Trim to last 20 exchanges (40 messages)
         if len(st.session_state.chat_history) > 40:
             st.session_state.chat_history = st.session_state.chat_history[-40:]
 
+        # Reset refresh timer so the auto-refresh doesn't conflict
+        st.session_state.last_refresh = 0.0
         st.rerun()
 
 
@@ -48,13 +48,15 @@ def _send_question(macmini_url: str, question: str) -> str:
         resp = httpx.post(
             f"{macmini_url}/api/chat",
             json={"question": question},
-            timeout=10.0,
+            timeout=5.0,
         )
         if resp.status_code == 200:
             return resp.json().get("answer", "No answer received.")
-        return f"Error: {resp.status_code}"
+        return f"Agent returned status {resp.status_code}."
     except httpx.ConnectError:
         return "Mac Mini agent is not reachable."
+    except httpx.TimeoutException:
+        return "Request timed out — the agent may be busy."
     except Exception as e:
         return f"Error: {e}"
 

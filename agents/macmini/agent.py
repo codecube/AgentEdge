@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 import statistics
+import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -41,10 +42,15 @@ logging.basicConfig(
 storage = JSONLinesStorage(config.LOG_FILE)
 ws_clients: list[WebSocket] = []
 sensor_history: list[dict] = []
+a2a_messages: list[dict] = []
+reasoning_events: list[dict] = []
 peer_card = None
+peer_last_seen: float = 0.0
 lfm_client = None
 
 SENSOR_FIELDS = ["temperature", "humidity", "eco2", "tvoc", "aqi"]
+MAX_A2A_MESSAGES = 100
+MAX_REASONING_EVENTS = 20
 
 
 async def broadcast_ws(data: dict):
@@ -62,7 +68,7 @@ async def broadcast_ws(data: dict):
 
 async def discover_peer():
     """Try to discover the Jetson agent."""
-    global peer_card
+    global peer_card, peer_last_seen
     import httpx
 
     try:
@@ -70,6 +76,7 @@ async def discover_peer():
             resp = await client.get(f"{config.JETSON_AGENT_URL}/health")
             if resp.status_code == 200:
                 peer_card = resp.json()
+                peer_last_seen = time.time()
                 logger.info("Discovered peer: %s", peer_card.get("agent_id"))
     except Exception as e:
         logger.warning("Peer discovery failed: %s", e)
@@ -105,6 +112,20 @@ def compute_statistics() -> dict:
             "count": len(values),
         }
     return stats
+
+
+def _record_a2a_message(event: str, data: dict):
+    """Append to the in-memory A2A message list (capped)."""
+    a2a_messages.append({"event": event, "data": data})
+    if len(a2a_messages) > MAX_A2A_MESSAGES:
+        a2a_messages[:] = a2a_messages[-MAX_A2A_MESSAGES:]
+
+
+def _record_reasoning_event(event: dict):
+    """Append to the in-memory reasoning events list (capped)."""
+    reasoning_events.append(event)
+    if len(reasoning_events) > MAX_REASONING_EVENTS:
+        reasoning_events[:] = reasoning_events[-MAX_REASONING_EVENTS:]
 
 
 async def handle_sensor_observation(msg: SensorObservation):
@@ -199,6 +220,14 @@ async def handle_analysis_request(data: dict):
         {"event": "analysis_response", "data": response.model_dump(by_alias=True)}
     )
 
+    # Track for dashboard reasoning panel
+    _record_reasoning_event({
+        "lfm_thinking": lfm_thinking,
+        "reasons": anomaly_reasons,
+        "reading": current,
+        "answer": answer,
+    })
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -257,6 +286,42 @@ async def get_stats():
 async def get_history(limit: int = 100):
     """Return recent sensor readings for the dashboard."""
     return sensor_history[-limit:]
+
+
+@app.get("/api/agents")
+async def get_agents():
+    """Return status of both agents for the dashboard.
+
+    The dashboard calls only this endpoint instead of health-checking
+    the Jetson directly (which it can't reach across the network).
+    """
+    # Jetson is "online" if we've heard from it in the last 30s
+    jetson_online = (time.time() - peer_last_seen) < 30 if peer_last_seen else False
+    jetson_info = peer_card or {}
+
+    macmini_card = create_agent_card(
+        agent_id=config.AGENT_ID,
+        host=config.AGENT_HOST,
+        port=config.AGENT_PORT,
+        capabilities=["historical_analysis", "lfm_reasoning", "dashboard_hosting"],
+    )
+
+    return {
+        "jetson": jetson_info if jetson_online else None,
+        "macmini": macmini_card.model_dump(),
+    }
+
+
+@app.get("/api/messages")
+async def get_messages(limit: int = 50):
+    """Return recent A2A messages for the dashboard conversation panel."""
+    return a2a_messages[-limit:]
+
+
+@app.get("/api/reasoning")
+async def get_reasoning():
+    """Return recent reasoning/anomaly events for the LFM panel."""
+    return reasoning_events
 
 
 # --- Chat ---
@@ -394,7 +459,23 @@ async def chat(req: ChatRequest):
 
     answer = await _generate_chat_answer(question, current, stats)
 
-    # Broadcast the exchange via WebSocket
+    # Track in A2A feed so it shows in the conversation panel
+    _record_a2a_message("query", {
+        "type": "query",
+        "from": "dashboard",
+        "to": config.AGENT_ID,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "payload": {"question": question},
+    })
+    _record_a2a_message("query_response", {
+        "type": "query_response",
+        "from": config.AGENT_ID,
+        "to": "dashboard",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "payload": {"answer": answer},
+    })
+
+    # Broadcast via WebSocket
     await broadcast_ws({
         "event": "chat_query",
         "data": {"question": question, "answer": answer},
@@ -409,10 +490,19 @@ async def chat(req: ChatRequest):
 @app.post("/a2a/message")
 async def receive_message(data: dict):
     """Receive an A2A message from a peer agent."""
+    global peer_last_seen
     msg_type = data.get("type")
     logger.info("Received A2A message: type=%s", msg_type)
     storage.append({"event": "a2a_received", **data})
     await broadcast_ws({"event": "a2a_message", "data": data})
+
+    # Track every incoming message for the dashboard
+    _record_a2a_message(msg_type or "unknown", data)
+
+    # Any message from the Jetson counts as "alive"
+    from_agent = data.get("from", "")
+    if "jetson" in from_agent.lower():
+        peer_last_seen = time.time()
 
     if msg_type == MessageType.SENSOR_OBSERVATION:
         msg = parse_message(data)

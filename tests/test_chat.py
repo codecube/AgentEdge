@@ -177,3 +177,51 @@ class TestChatEndpoint:
         resp = client.post("/api/chat", json={"question": "   "})
         assert resp.status_code == 200
         assert "Please ask" in resp.json()["answer"]
+
+
+# --- New aggregation endpoints ---
+
+
+class TestAggregationEndpoints:
+    @pytest.fixture()
+    def client(self):
+        from agents.macmini.agent import app
+
+        return TestClient(app)
+
+    def test_agents_endpoint(self, client):
+        resp = client.get("/api/agents")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "jetson" in body
+        assert "macmini" in body
+        # Mac Mini should always report itself
+        assert body["macmini"] is not None
+
+    def test_messages_endpoint(self, client):
+        resp = client.get("/api/messages?limit=10")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_reasoning_endpoint(self, client):
+        resp = client.get("/api/reasoning")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)
+
+    def test_chat_populates_messages(self, client):
+        from agents.macmini import agent as mac_agent
+
+        mac_agent.sensor_history.clear()
+        mac_agent.sensor_history.append({
+            "temperature": 22.0, "humidity": 55.0,
+            "eco2": 400, "tvoc": 100, "aqi": 1,
+        })
+        mac_agent.a2a_messages.clear()
+
+        client.post("/api/chat", json={"question": "temperature?"})
+
+        resp = client.get("/api/messages")
+        msgs = resp.json()
+        types = [m["event"] for m in msgs]
+        assert "query" in types
+        assert "query_response" in types
