@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from agents.jetson import config
@@ -302,6 +303,55 @@ async def sensor_current():
     if previous_reading is None:
         return {"status": "no_data", "reading": None}
     return {"status": "ok", "reading": previous_reading}
+
+
+class ChatRequest(BaseModel):
+    """Request body for the chat endpoint."""
+
+    question: str
+
+
+def _build_chat_prompt(question: str, sensor_data: dict | None) -> str:
+    """Build an LFM prompt with optional sensor context."""
+    if sensor_data:
+        sensor_block = (
+            f"- Temperature: {sensor_data.get('temperature')}°C\n"
+            f"- Humidity: {sensor_data.get('humidity')}%\n"
+            f"- eCO2: {sensor_data.get('eco2')} ppm\n"
+            f"- TVOC: {sensor_data.get('tvoc')} ppb\n"
+            f"- AQI: {sensor_data.get('aqi')}/5"
+        )
+    else:
+        sensor_block = "- No live sensor data available"
+
+    return (
+        "You are an AI assistant for the Agent Edge environmental monitoring system "
+        f"at {config.LOCATION}.\n"
+        "You have access to live sensor data from an ENS160+AHT21 module.\n\n"
+        f"Current sensor data:\n{sensor_block}\n\n"
+        f"User question: {question}\n\n"
+        "Provide a concise, helpful answer."
+    )
+
+
+@app.post("/api/chat/stream")
+async def chat_stream(req: ChatRequest):
+    """Stream LFM response as Server-Sent Events."""
+    if lfm_client is None:
+        return {"error": "LFM model not available"}, 503
+
+    prompt = _build_chat_prompt(req.question, previous_reading)
+
+    async def event_generator():
+        try:
+            async for token in lfm_client.analyze_streaming(prompt):
+                yield f"data: {json.dumps(token)}\n\n"
+            yield "event: done\ndata: {}\n\n"
+        except Exception as e:
+            logger.error("Chat stream error: %s", e)
+            yield f"event: error\ndata: {json.dumps(str(e))}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.post("/a2a/message")
