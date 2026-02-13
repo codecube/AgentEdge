@@ -24,7 +24,7 @@ def render_chat_widget(macmini_url: str):
             _render_agent_message(msg["content"])
 
     # Chat input
-    question = st.chat_input("Ask about sensor data...")
+    question = st.chat_input()
     if question:
         # Add user message
         st.session_state.chat_history.append({"role": "user", "content": question})

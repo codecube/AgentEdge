@@ -112,7 +112,7 @@ _logo_b64 = _b64.b64encode(_LOGO_SVG.encode()).decode()
 header_html = f"""
 <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 8px;">
     <img src="data:image/svg+xml;base64,{_logo_b64}"
-         alt="Capgemini" style="height: 28px; opacity: 0.85;" />
+         alt="Capgemini" style="height: 36px; opacity: 0.85;" />
     <div style="width: 1px; height: 24px; background: #334155;"></div>
     <h1 style="margin: 0; font-size: 1.8rem; letter-spacing: -0.04em;">AGENT EDGE</h1>
     <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;

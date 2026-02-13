@@ -1,0 +1,28 @@
+%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#151d2e', 'primaryTextColor': '#e2e8f0', 'primaryBorderColor': '#334155', 'lineColor': '#475569', 'secondaryColor': '#1a2438', 'tertiaryColor': '#0a0e17', 'edgeLabelBackground': '#111827', 'clusterBkg': '#111827', 'clusterBorder': '#1e293b'}}}%%
+
+graph LR
+    subgraph SITE_A["SITE A — Jetson Orin Nano"]
+        direction TB
+        ARDUINO["Arduino<br/>ENS160+AHT21<br/><i>I2C / Serial</i>"]
+        MCP["MCP Server<br/><i>read_sensor tool</i><br/><i>stdio transport</i>"]
+        JETSON["Jetson Agent<br/><i>Anomaly Detection</i><br/><i>LFM 2.5 (CUDA)</i>"]
+        ARDUINO -->|"USB Serial"| MCP
+        MCP -->|"MCP Protocol"| JETSON
+    end
+
+    subgraph CONTROL["CONTROL CENTER — Mac Mini M2"]
+        direction TB
+        MACMINI["Mac Mini Agent<br/><i>Historical Stats</i><br/><i>LFM 2.5 (MPS)</i>"]
+        DASHBOARD["Streamlit Dashboard<br/><i>Real-time Viz</i><br/><i>:8501</i>"]
+        MACMINI --> DASHBOARD
+    end
+
+    JETSON <-->|"A2A Protocol<br/>HTTP + WebSocket"| MACMINI
+
+    style ARDUINO fill:#1a2438,stroke:#00f0ff,stroke-width:2px,color:#e2e8f0
+    style MCP fill:#1a2438,stroke:#22c55e,stroke-width:2px,color:#e2e8f0
+    style JETSON fill:#151d2e,stroke:#00f0ff,stroke-width:2px,color:#e2e8f0
+    style MACMINI fill:#151d2e,stroke:#ffaa00,stroke-width:2px,color:#e2e8f0
+    style DASHBOARD fill:#1a2438,stroke:#a78bfa,stroke-width:2px,color:#e2e8f0
+    style SITE_A fill:#0a0e17,stroke:#00f0ff,stroke-width:1px,color:#00f0ff
+    style CONTROL fill:#0a0e17,stroke:#ffaa00,stroke-width:1px,color:#ffaa00

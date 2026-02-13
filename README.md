@@ -14,24 +14,7 @@ Agent Edge is a working demonstration built for [Capgemini's AI Futures Lab](htt
 
 ## Architecture
 
-```
-                         SITE A — Jetson Orin Nano
-┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│ Arduino          │    │ MCP Server       │    │ Jetson Agent     │
-│ ENS160+AHT21     │───>│ read_sensor tool  │───>│ Anomaly Detection│
-│ I2C / Serial     │    │ stdio transport   │    │ LFM 2.5 (CUDA)  │
-└──────────────────┘    └──────────────────┘    └────────┬─────────┘
-                                                         │
-                                                    A2A Protocol
-                                                   HTTP + WebSocket
-                                                         │
-                         CONTROL CENTER — Mac Mini M2     │
-                        ┌──────────────────┐    ┌────────┴─────────┐
-                        │ Streamlit        │    │ Mac Mini Agent   │
-                        │ Dashboard :8501  │<───│ Historical Stats │
-                        │ Real-time Viz    │    │ LFM 2.5 (MPS)   │
-                        └──────────────────┘    └──────────────────┘
-```
+![Architecture](docs/diagrams/readme_architecture.png)
 
 ## Sensor Data
 

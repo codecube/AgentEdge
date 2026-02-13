@@ -28,7 +28,7 @@ BANNER = f"""
   / ___ \\ (_| |  __/ | | | |_| |__| (_| | (_| |  __/
  /_/   \\_\\__, |\\___|_| |_|\\__|_____\\__,_|\\__, |\\___|
          |___/                            |___/{RESET}
-{AMBER}         Capgemini AI Futures Lab{RESET}
+{CYAN}         Capgemini AI Futures Lab{RESET}
 """
 
 HELP_TEXT = f"""{BOLD}Commands:{RESET}
