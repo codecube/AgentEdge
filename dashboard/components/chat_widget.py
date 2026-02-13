@@ -1,7 +1,6 @@
 """Sidebar chat widget — ask natural-language questions about sensor data.
 
 Uses A2A ``message/send`` (JSON-RPC) for chat with the Mac agent.
-Falls back to the REST ``/api/chat`` endpoint for a fast data-only answer.
 """
 from __future__ import annotations
 
@@ -26,28 +25,38 @@ def render_chat_widget(macmini_url: str):
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
+    # Message container — we write to this both from history and inline
+    msg_container = st.container()
+
     # Render existing messages
-    for msg in st.session_state.chat_history:
-        if msg["role"] == "user":
-            _render_user_message(msg["content"])
-        else:
-            _render_agent_message(msg["content"])
+    with msg_container:
+        for msg in st.session_state.chat_history:
+            if msg["role"] == "user":
+                _render_user_message(msg["content"])
+            else:
+                _render_agent_message(msg["content"])
 
     # Chat input
     question = st.chat_input()
     if question:
-        # Add user message
+        # Show user message immediately
         st.session_state.chat_history.append({"role": "user", "content": question})
+        with msg_container:
+            _render_user_message(question)
 
-        # Send via A2A message/send
-        answer = _send_question(macmini_url, question)
+        # Show spinner while waiting for LLM
+        with msg_container:
+            with st.spinner("Thinking..."):
+                answer = _send_question(macmini_url, question)
+
+        # Show agent response
         st.session_state.chat_history.append({"role": "agent", "content": answer})
+        with msg_container:
+            _render_agent_message(answer)
 
         # Trim to last 20 exchanges (40 messages)
         if len(st.session_state.chat_history) > 40:
             st.session_state.chat_history = st.session_state.chat_history[-40:]
-
-        st.rerun(scope="fragment")
 
 
 def _send_question(macmini_url: str, question: str) -> str:
