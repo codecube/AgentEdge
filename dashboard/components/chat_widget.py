@@ -29,21 +29,17 @@ def render_chat_widget(macmini_url: str):
 
     # Chat input
     question = st.chat_input()
-    if question:
-        # Show user message
+    if question and question != st.session_state.get("_last_q"):
+        st.session_state._last_q = question
         st.session_state.chat_history.append({"role": "user", "content": question})
-        _render_user_message(question)
-
-        # Call LLM
         answer = _send_question(macmini_url, question)
-
-        # Show and save agent response
         st.session_state.chat_history.append({"role": "agent", "content": answer})
-        _render_agent_message(answer)
 
         # Trim to last 20 exchanges (40 messages)
         if len(st.session_state.chat_history) > 40:
             st.session_state.chat_history = st.session_state.chat_history[-40:]
+
+        st.rerun()
 
 
 def _send_question(macmini_url: str, question: str) -> str:

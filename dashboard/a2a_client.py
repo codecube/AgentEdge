@@ -64,31 +64,27 @@ def extract_agent_reply(response: dict) -> str:
         return response["error"]
 
     result = response.get("result", {})
-    logger.debug("A2A result keys: %s", list(result.keys()))
 
-    # Collect ALL text from every agent message and artifact,
-    # skipping only adk_thought parts.
-    texts: list[str] = []
+    # Try each location in priority order, return first match.
 
     # 1. History messages (most common ADK format)
     for msg in reversed(result.get("history", [])):
         if msg.get("role") == "agent":
             found = _extract_text_parts(msg.get("parts", []))
             if found:
-                texts.extend(found)
-                break  # take the last agent message only
+                return "\n".join(found)
 
-    # 2. Artifacts (ADK sometimes puts agent output here)
+    # 2. Artifacts
     for artifact in result.get("artifacts", []):
         found = _extract_text_parts(artifact.get("parts", []))
         if found:
-            texts.extend(found)
+            return "\n".join(found)
 
     # 3. Result is itself a direct message
     if result.get("role") == "agent" and result.get("parts"):
         found = _extract_text_parts(result["parts"])
         if found:
-            texts.extend(found)
+            return "\n".join(found)
 
     # 4. Nested message field
     message = result.get("message")
@@ -97,10 +93,7 @@ def extract_agent_reply(response: dict) -> str:
     if message:
         found = _extract_text_parts(message.get("parts", []))
         if found:
-            texts.extend(found)
-
-    if texts:
-        return "\n".join(texts)
+            return "\n".join(found)
 
     # Last resort: dump the full response for debugging
     logger.warning(
