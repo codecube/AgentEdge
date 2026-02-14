@@ -29,7 +29,7 @@ INSTRUCTION = (
 
 root_agent = LlmAgent(
     name="jetson_site_a",
-    model=LiteLlm(model="ollama_chat/lfm2.5-thinking"),
+    model=LiteLlm(model="ollama_chat/sam860/lfm2.5:1.2b-Q8_0"),
     description="Site A sensor monitoring agent on Jetson Orin Nano. "
     "Reads air quality sensors and detects environmental anomalies.",
     instruction=INSTRUCTION,

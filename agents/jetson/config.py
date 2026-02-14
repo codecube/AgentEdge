@@ -10,7 +10,7 @@ MCP_ARDUINO_SERVER = os.getenv(
 )
 MACMINI_AGENT_URL = os.getenv("MACMINI_AGENT_URL", "http://localhost:8081")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
-LFM_MODEL = os.getenv("LFM_MODEL", "lfm2.5-thinking")
+LFM_MODEL = os.getenv("LFM_MODEL", "sam860/lfm2.5:1.2b-Q8_0")
 SERIAL_PORT = os.getenv("SERIAL_PORT", "/dev/ttyUSB0")
 SERIAL_BAUD = int(os.getenv("SERIAL_BAUD", "9600"))
 

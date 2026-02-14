@@ -34,14 +34,14 @@ INSTRUCTION = (
     "- Retrieve recent sensor history\n"
     "- Summarize anomaly events\n"
     "- Delegate to the Jetson agent for live sensor readings\n\n"
-    "When asked about current readings, delegate to the jetson_site_a agent. "
-    "When asked about trends or statistics, use your own tools. "
+    "Use get_recent_history to answer questions about sensor readings. "
+    "Only delegate to jetson_site_a if the user specifically asks to talk to the Jetson agent. "
     "Provide concise, factual answers."
 )
 
 root_agent = LlmAgent(
     name="macmini_control",
-    model=LiteLlm(model="ollama_chat/lfm2.5-thinking"),
+    model=LiteLlm(model="ollama_chat/sam860/lfm2.5:1.2b-Q8_0"),
     description="Control agent on Mac. "
     "Performs historical analysis and coordinates with remote sensor agents.",
     instruction=INSTRUCTION,
