@@ -78,6 +78,7 @@ div[data-testid="stMetric"] label {
 div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
     font-family: 'JetBrains Mono', monospace !important;
     font-weight: 500 !important;
+    font-size: 1.7rem !important;
     color: var(--cyan) !important;
 }
 

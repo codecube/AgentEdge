@@ -9,13 +9,8 @@ import streamlit as st
 from dashboard.a2a_client import extract_agent_reply, send_a2a_message
 
 
-@st.fragment
 def render_chat_widget(macmini_url: str):
-    """Render the chat widget inside st.sidebar.
-
-    Decorated with ``@st.fragment`` so the long-running LLM call is not
-    interrupted by the 2-second ``st_autorefresh`` on the main page.
-    """
+    """Render the chat widget inside st.sidebar."""
     st.markdown(
         '<div class="section-header">Agent Chat</div>',
         unsafe_allow_html=True,
@@ -25,39 +20,30 @@ def render_chat_widget(macmini_url: str):
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # Message container — we write to this both from history and inline
-    msg_container = st.container()
-
     # Render existing messages
-    with msg_container:
-        for msg in st.session_state.chat_history:
-            if msg["role"] == "user":
-                _render_user_message(msg["content"])
-            else:
-                _render_agent_message(msg["content"])
+    for msg in st.session_state.chat_history:
+        if msg["role"] == "user":
+            _render_user_message(msg["content"])
+        else:
+            _render_agent_message(msg["content"])
 
     # Chat input
     question = st.chat_input()
     if question:
-        # Show user message immediately
+        # Show user message
         st.session_state.chat_history.append({"role": "user", "content": question})
-        with msg_container:
-            _render_user_message(question)
+        _render_user_message(question)
 
-        # Call LLM with spinner
-        with msg_container:
-            with st.spinner(""):
-                answer = _send_question(macmini_url, question)
+        # Call LLM
+        answer = _send_question(macmini_url, question)
 
-        # Save to session state
+        # Show and save agent response
         st.session_state.chat_history.append({"role": "agent", "content": answer})
+        _render_agent_message(answer)
 
         # Trim to last 20 exchanges (40 messages)
         if len(st.session_state.chat_history) > 40:
             st.session_state.chat_history = st.session_state.chat_history[-40:]
-
-        # Force fragment rerun so the history loop renders the new answer
-        st.rerun(scope="fragment")
 
 
 def _send_question(macmini_url: str, question: str) -> str:
@@ -127,26 +113,18 @@ def _escape(text: str) -> str:
 
 
 def _format_agent_content(text: str) -> str:
-    """Parse <think> tags: grey for thinking, cyan for answer."""
+    """Format agent text — strip <think> tags if present."""
     import re as _re
 
     think_match = _re.search(r"<think>(.*?)</think>(.*)", text, _re.DOTALL)
     if think_match:
-        thinking = _escape(think_match.group(1).strip())
         answer = _escape(think_match.group(2).strip())
-        parts = []
-        if thinking:
-            parts.append(
-                f'<span style="font-family: \'JetBrains Mono\', monospace; font-size: 0.75rem;'
-                f' color: #64748b; font-style: italic;">{thinking}</span>'
-            )
         if answer:
-            parts.append(
+            return (
                 f'<span style="font-family: \'JetBrains Mono\', monospace; font-size: 0.8rem;'
                 f' color: #00f0ff;">{answer}</span>'
             )
-        return "<br>".join(parts)
-    # No thinking tags — plain text answer in cyan
+    # Plain text
     return (
         f'<span style="font-family: \'JetBrains Mono\', monospace; font-size: 0.8rem;'
         f' color: #00f0ff;">{_escape(text)}</span>'

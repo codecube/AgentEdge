@@ -27,9 +27,13 @@ from dashboard.components.sensor_viz import render_sensor_charts
 from dashboard.style import CUSTOM_CSS
 
 # --- Page Config ---
+_ASSETS = Path(__file__).resolve().parent / "assets"
+_SPADE_SVG = (_ASSETS / "capgemini_spade.svg").read_text()
+_LOGO_SVG = (_ASSETS / "capgemini_logo_white.svg").read_text()
+
 st.set_page_config(
     page_title="Agent Edge",
-    page_icon="",
+    page_icon=_SPADE_SVG,
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -111,15 +115,10 @@ def fetch_all_data() -> dict:
 
 
 # --- Header ---
-_LOGO_SVG = (Path(__file__).resolve().parent / "assets" / "capgemini_logo_white.svg").read_text()
 import base64 as _b64
 
-_logo_b64 = _b64.b64encode(_LOGO_SVG.encode()).decode()
-header_html = f"""
-<div style="display: flex; align-items: center; gap: 20px; margin-bottom: 8px;">
-    <img src="data:image/svg+xml;base64,{_logo_b64}"
-         alt="Capgemini" style="height: 52px; margin-top: 10px; opacity: 0.85;" />
-    <div style="width: 1px; height: 24px; background: #334155;"></div>
+header_html = """
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
     <h1 style="margin: 0; font-size: 1.8rem; letter-spacing: -0.04em;">AGENT EDGE</h1>
     <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
                  color: #64748b; letter-spacing: 0.05em;">
@@ -164,8 +163,17 @@ with bottom_left:
 with bottom_right:
     render_lfm_reasoning(st.session_state.reasoning_events)
 
-# --- Sidebar Chat ---
+# --- Sidebar ---
 with st.sidebar:
+    _logo_b64 = _b64.b64encode(_LOGO_SVG.encode()).decode()
+    st.markdown(
+        f"""<div style="padding: 0 0 16px 0; margin: calc(-1rem - 20px) 0 12px 0;
+                    border-bottom: 1px solid #1e293b;">
+            <img src="data:image/svg+xml;base64,{_logo_b64}"
+                 alt="Capgemini" style="height: 60px; opacity: 0.85;" />
+        </div>""",
+        unsafe_allow_html=True,
+    )
     render_chat_widget(MACMINI_URL)
 
 # --- Footer ---
