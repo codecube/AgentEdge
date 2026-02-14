@@ -41,7 +41,7 @@ INSTRUCTION = (
 
 root_agent = LlmAgent(
     name="macmini_control",
-    model=LiteLlm(model="ollama_chat/sam860/lfm2.5:1.2b-Q8_0"),
+    model=LiteLlm(model="ollama_chat/tomng/lfm2.5-instruct"),
     description="Control agent on Mac. "
     "Performs historical analysis and coordinates with remote sensor agents.",
     instruction=INSTRUCTION,
