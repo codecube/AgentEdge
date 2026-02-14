@@ -10,7 +10,7 @@ Agent Edge is a working demonstration built for [Capgemini's AI Futures Lab](htt
 - **Google ADK** — Agent Development Kit for building and serving AI agents
 - **A2A Protocol** — Google's Agent-to-Agent protocol for cross-device agent collaboration
 - **MCP Protocol** — Anthropic's Model Context Protocol for agent-to-system integration
-- **On-device intelligence** — Liquid AI LFM2.5-1.2B-Thinking running locally on edge hardware
+- **On-device intelligence** — Liquid AI LFM2.5-Instruct running locally on edge hardware
 - **Visible reasoning** — watch two AI agents think and collaborate in real time on a live dashboard
 
 ## Architecture
@@ -62,7 +62,8 @@ agent-edge/
 ├── mcp_servers/arduino/         # MCP server exposing read_sensor tool
 ├── shared/
 │   ├── state.py                 # Module-level shared state (per-process)
-│   └── storage.py               # JSON Lines append-only storage
+│   ├── storage.py               # JSON Lines append-only storage
+│   └── a2a_setup.py             # Shared A2A route setup for ADK agents
 ├── agents/
 │   ├── jetson/                  # Site A: sensor reading + anomaly detection
 │   │   ├── agent_def.py         # ADK LlmAgent definition + tools
@@ -92,9 +93,9 @@ agent-edge/
 ## Prerequisites
 
 - **Python 3.10+** (3.9 works with `from __future__ import annotations`)
-- **Ollama** installed and running with `lfm2.5-thinking` pulled:
+- **Ollama** installed and running with `tomng/lfm2.5-instruct` pulled:
   ```bash
-  ollama pull lfm2.5-thinking
+  ollama pull tomng/lfm2.5-instruct
   ollama serve   # if not already running as a system service
   ```
 - **Arduino** with ENS160+AHT21 module connected via USB
@@ -137,7 +138,7 @@ pip install -r requirements.txt
 mkdir -p data
 
 # Ensure Ollama is running with the LFM model
-ollama pull lfm2.5-thinking
+ollama pull tomng/lfm2.5-instruct
 
 # Configure environment
 export OLLAMA_API_BASE=http://localhost:11434   # Required for LiteLLM
@@ -166,7 +167,7 @@ python3 -m agents.jetson.cli_chat
 
 This gives you an interactive REPL where you can:
 - Type `/sensor` to read live sensor data from the Arduino (via the agent API)
-- Ask free-text questions — LFM responds with streaming output, using live sensor data as context
+- Ask free-text questions — LFM responds using live sensor data as context
 - Type `/help` to see all commands, `/quit` to exit
 
 ### 3. Mac Agent (Control Center)
@@ -185,7 +186,7 @@ pip install -r requirements.txt
 mkdir -p data
 
 # Ensure Ollama is running with the LFM model
-ollama pull lfm2.5-thinking
+ollama pull tomng/lfm2.5-instruct
 
 # Configure environment
 export OLLAMA_API_BASE=http://localhost:11434   # Required for LiteLLM
@@ -211,7 +212,7 @@ On the Mac (or wherever the Mac agent runs):
 streamlit run dashboard/app.py
 ```
 
-Open `http://localhost:8501` in a browser. The dashboard auto-refreshes every second.
+Open `http://localhost:8501` in a browser. The dashboard auto-refreshes every 5 seconds.
 
 ### Quick Start (Single Machine)
 
@@ -275,7 +276,7 @@ Full technical documentation is in `docs/Agent_Edge_AI_Futures_Lab.docx`, includ
 | Agent Framework | [Google ADK](https://github.com/google/adk-python) (`google-adk[a2a]`) |
 | Agent Communication | [A2A Protocol](https://github.com/google/A2A) via `a2a-sdk` |
 | LLM Integration | [LiteLLM](https://github.com/BerriAI/litellm) → Ollama |
-| LLM | [Liquid AI LFM2.5-1.2B-Thinking](https://www.liquid.ai/models) via Ollama |
+| LLM | [Liquid AI LFM2.5-Instruct](https://www.liquid.ai/models) via Ollama |
 | Tool Integration | MCP (Model Context Protocol) |
 | Web Framework | FastAPI + Uvicorn |
 | Dashboard | Streamlit + Plotly |

@@ -40,7 +40,7 @@ async def get_agents():
                 "lfm_reasoning",
                 "dashboard_hosting",
             ],
-            "model": "LiquidAI/LFM2.5-1.2B-Thinking",
+            "model": "LiquidAI/LFM2.5-Instruct",
             "status": "active",
         },
     }
@@ -83,7 +83,7 @@ async def sensor_push(reading: dict):
         state.peer_card = {
             "agent_id": "jetson-site-a",
             "capabilities": ["sensor_reading", "anomaly_detection"],
-            "model": "LiquidAI/LFM2.5-1.2B-Thinking",
+            "model": "LiquidAI/LFM2.5-Instruct",
             "status": "active",
         }
 

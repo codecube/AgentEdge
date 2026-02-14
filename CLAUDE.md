@@ -1,7 +1,7 @@
 # Agent Edge - Multi-Site Edge Intelligence Demo
 
 ## Project Overview
-Distributed AI agent system: two autonomous agents (Jetson Orin Nano + Mac) coordinate via Google ADK + A2A protocol. The Jetson reads an ENS160+AHT21 sensor module (temperature, humidity, eCO2, TVOC, AQI) through an Arduino via MCP protocol. Both agents run Liquid AI LFM2.5-1.2B-Thinking locally via Ollama + LiteLLM. Dashboard via Streamlit.
+Distributed AI agent system: two autonomous agents (Jetson Orin Nano + Mac) coordinate via Google ADK + A2A protocol. The Jetson reads an ENS160+AHT21 sensor module (temperature, humidity, eCO2, TVOC, AQI) through an Arduino via MCP protocol. Both agents run Liquid AI LFM2.5-Instruct locally via Ollama + LiteLLM. Dashboard via Streamlit.
 
 ## Architecture
 ```
@@ -20,7 +20,7 @@ Dashboard → A2A message/send → [Mac ADK Agent] ← REST push ← [Jetson ADK
 ## Key Tech
 - **Python 3.10+**, FastAPI, WebSocket, asyncio
 - **Agent framework**: Google ADK (`google-adk[a2a]`), `a2a-sdk`
-- **LLM**: LiquidAI/LFM2.5-1.2B-Thinking via Ollama + LiteLLM (`ollama_chat/lfm2.5-thinking`)
+- **LLM**: LiquidAI/LFM2.5-Instruct via Ollama + LiteLLM (`ollama_chat/tomng/lfm2.5-instruct`)
 - **Sensor**: ENS160 (eCO2, TVOC, AQI) + AHT21 (temp, humidity) over I2C
 - **Arduino**: ScioSense_ENS160 + Adafruit_AHTX0 libraries, JSON over serial at 9600 baud
 - **Protocols**: MCP (agent-to-system), A2A (agent-to-agent via ADK)
