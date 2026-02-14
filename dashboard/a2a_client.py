@@ -5,9 +5,13 @@ This avoids async/Streamlit mismatch issues.
 """
 from __future__ import annotations
 
+import json
+import logging
 import uuid
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 def send_a2a_message(agent_url: str, text: str, timeout: float = 30.0) -> dict:
@@ -53,39 +57,56 @@ def send_a2a_message(agent_url: str, text: str, timeout: float = 30.0) -> dict:
 def extract_agent_reply(response: dict) -> str:
     """Extract the agent's text reply from a JSON-RPC response.
 
-    Google ADK returns agent messages in ``result.history`` (list of
-    messages with role/parts).  Also handles ``result.message`` and
-    ``result.status.message`` for other A2A implementations.
+    Searches every possible location where agent text can appear in
+    ADK / A2A responses.
     """
     if "error" in response:
         return response["error"]
 
     result = response.get("result", {})
+    logger.debug("A2A result keys: %s", list(result.keys()))
 
-    # --- ADK format: last agent message in history ---
-    history = result.get("history", [])
-    for msg in reversed(history):
+    # Collect ALL text from every agent message and artifact,
+    # skipping only adk_thought parts.
+    texts: list[str] = []
+
+    # 1. History messages (most common ADK format)
+    for msg in reversed(result.get("history", [])):
         if msg.get("role") == "agent":
-            texts = _extract_text_parts(msg.get("parts", []))
-            if texts:
-                return "\n".join(texts)
+            found = _extract_text_parts(msg.get("parts", []))
+            if found:
+                texts.extend(found)
+                break  # take the last agent message only
 
-    # --- Result is itself a direct message (A2A SDK format) ---
+    # 2. Artifacts (ADK sometimes puts agent output here)
+    for artifact in result.get("artifacts", []):
+        found = _extract_text_parts(artifact.get("parts", []))
+        if found:
+            texts.extend(found)
+
+    # 3. Result is itself a direct message
     if result.get("role") == "agent" and result.get("parts"):
-        texts = _extract_text_parts(result["parts"])
-        if texts:
-            return "\n".join(texts)
+        found = _extract_text_parts(result["parts"])
+        if found:
+            texts.extend(found)
 
-    # --- Nested message field ---
+    # 4. Nested message field
     message = result.get("message")
     if not message:
-        # Task-based response
         message = (result.get("status") or {}).get("message")
     if message:
-        texts = _extract_text_parts(message.get("parts", []))
-        if texts:
-            return "\n".join(texts)
+        found = _extract_text_parts(message.get("parts", []))
+        if found:
+            texts.extend(found)
 
+    if texts:
+        return "\n".join(texts)
+
+    # Last resort: dump the full response for debugging
+    logger.warning(
+        "Could not extract agent reply. Full response:\n%s",
+        json.dumps(response, indent=2, default=str)[:2000],
+    )
     return "No response from agent."
 
 
@@ -102,7 +123,7 @@ def _extract_text_parts(parts: list) -> list[str]:
         if meta.get("adk_thought"):
             continue
         if part.get("kind") == "text" or part.get("type") == "text":
-            text = part.get("text", "")
+            text = part.get("text", "").strip()
             if text:
                 texts.append(text)
     return texts

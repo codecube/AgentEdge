@@ -44,19 +44,20 @@ def render_chat_widget(macmini_url: str):
         with msg_container:
             _render_user_message(question)
 
-        # Show spinner while waiting for LLM
+        # Call LLM with spinner
         with msg_container:
-            with st.spinner("Thinking..."):
+            with st.spinner(""):
                 answer = _send_question(macmini_url, question)
 
-        # Show agent response
+        # Save to session state
         st.session_state.chat_history.append({"role": "agent", "content": answer})
-        with msg_container:
-            _render_agent_message(answer)
 
         # Trim to last 20 exchanges (40 messages)
         if len(st.session_state.chat_history) > 40:
             st.session_state.chat_history = st.session_state.chat_history[-40:]
+
+        # Force fragment rerun so the history loop renders the new answer
+        st.rerun(scope="fragment")
 
 
 def _send_question(macmini_url: str, question: str) -> str:

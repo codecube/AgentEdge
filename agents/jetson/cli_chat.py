@@ -81,7 +81,7 @@ async def _read_sensor_http(client: httpx.AsyncClient) -> dict | None:
 
 
 async def _chat_a2a(client: httpx.AsyncClient, question: str) -> None:
-    """Send a chat question via A2A message/send and print the reply."""
+    """Send a chat question via A2A message/stream and print tokens as they arrive."""
     import uuid
 
     message_id = uuid.uuid4().hex
@@ -90,7 +90,7 @@ async def _chat_a2a(client: httpx.AsyncClient, question: str) -> None:
     payload = {
         "jsonrpc": "2.0",
         "id": request_id,
-        "method": "message/send",
+        "method": "message/stream",
         "params": {
             "message": {
                 "role": "user",
@@ -100,58 +100,93 @@ async def _chat_a2a(client: httpx.AsyncClient, question: str) -> None:
         },
     }
 
-    print(f"\n{DIM}Thinking...{RESET}", end="", flush=True)
+    print()
+    collected = ""
     try:
-        resp = await client.post(
-            AGENT_BASE_URL, json=payload, timeout=120.0
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        async with client.stream(
+            "POST", AGENT_BASE_URL, json=payload, timeout=120.0
+        ) as resp:
+            resp.raise_for_status()
+            async for line in resp.aiter_lines():
+                if not line.startswith("data:"):
+                    continue
+                data_str = line[len("data:"):].strip()
+                if not data_str:
+                    continue
+                try:
+                    event = json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
 
-        # Extract agent reply from ADK response
-        reply = _extract_reply(data)
-        print(f"\r{CYAN}{reply}{RESET}\n")
+                text = _extract_event_text(event)
+                if text and len(text) > len(collected):
+                    new_chars = text[len(collected):]
+                    print(f"{CYAN}{new_chars}{RESET}", end="", flush=True)
+                    collected = text
+
+        if not collected:
+            print(f"{RED}No response from agent.{RESET}", end="")
+        print("\n")
     except httpx.ConnectError:
-        print(f"\r{RED}Agent is not reachable.{RESET}\n")
+        print(f"{RED}Agent is not reachable.{RESET}\n")
     except httpx.TimeoutException:
-        print(f"\r{RED}Request timed out — the agent may be busy.{RESET}\n")
+        print(f"{RED}Request timed out — the agent may be busy.{RESET}\n")
     except Exception as e:
-        print(f"\r{RED}Error: {e}{RESET}\n")
+        print(f"{RED}Error: {e}{RESET}\n")
 
 
-def _extract_reply(response: dict) -> str:
-    """Extract agent text from an A2A JSON-RPC response."""
-    result = response.get("result", {})
+def _extract_event_text(event: dict) -> str | None:
+    """Extract agent text from an A2A SSE event.
 
-    # ADK format: last agent message in history
+    Handles multiple event shapes:
+    - artifact-update with parts
+    - status-update with message
+    - final result with history
+    - direct message result
+    """
+    result = event.get("result", event)
+
+    # Artifact update — streaming text chunks
+    artifact = result.get("artifact")
+    if artifact:
+        text = _text_from_parts(artifact.get("parts", []))
+        if text:
+            return text
+
+    # Status update with message
+    status = result.get("status") or {}
+    message = status.get("message")
+    if message:
+        text = _text_from_parts(message.get("parts", []))
+        if text:
+            return text
+
+    # Final result with history
     for msg in reversed(result.get("history", [])):
         if msg.get("role") == "agent":
-            for part in msg.get("parts", []):
-                meta = part.get("metadata") or {}
-                if meta.get("adk_thought"):
-                    continue
-                if part.get("kind") == "text" and part.get("text", "").strip():
-                    return part["text"]
+            text = _text_from_parts(msg.get("parts", []))
+            if text:
+                return text
 
-    # Result is itself a direct message (A2A SDK format)
-    if result.get("role") == "agent" and result.get("parts"):
-        for part in result["parts"]:
-            meta = part.get("metadata") or {}
-            if meta.get("adk_thought"):
-                continue
-            if part.get("kind") == "text" and part.get("text", "").strip():
-                return part["text"]
+    # Direct message result
+    if result.get("role") == "agent":
+        text = _text_from_parts(result.get("parts", []))
+        if text:
+            return text
 
-    # Fallback: nested message field
-    message = result.get("message")
-    if not message:
-        message = (result.get("status") or {}).get("message")
-    if message:
-        for part in message.get("parts", []):
-            if part.get("kind") == "text" and part.get("text", "").strip():
-                return part["text"]
+    return None
 
-    return "No response from agent."
+
+def _text_from_parts(parts: list) -> str | None:
+    """Join non-thought text parts."""
+    texts = []
+    for part in parts:
+        meta = part.get("metadata") or {}
+        if meta.get("adk_thought"):
+            continue
+        if part.get("kind") == "text" and part.get("text", "").strip():
+            texts.append(part["text"])
+    return "\n".join(texts) if texts else None
 
 
 async def _check_agent() -> bool:
@@ -241,7 +276,7 @@ async def main() -> None:
                 print(f"{RED}Unknown command:{RESET} {text}. Type /help for commands.")
                 continue
 
-            # ── Chat via A2A message/send ─────────────────────────────
+            # ── Chat via A2A message/stream ────────────────────────────
             await _chat_a2a(http_client, text)
 
     finally:
